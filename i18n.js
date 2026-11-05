@@ -1,0 +1,358 @@
+/* 漢南辭典 — 界面多語言（简体 / 繁體 / Tiếng Việt / English） */
+(function () {
+  "use strict";
+
+  var DICT = {
+    hans: {
+      "app.name": "漢南辭典",
+      "app.sub": "汉语 · 越南语 · 字喃",
+      "nav.dict": "查词",
+      "nav.ai": "翻译",
+      "search.ph": "输入中文词或越南语",
+      "search.clear": "清除",
+      "search.hint": "例：雞 ／ 苹果 ／ 电脑 ／ nước ／ gà",
+      "empty.title": "没有找到",
+      "empty.sub": "可以换个说法，或试试单字。",
+      "foot.count": "{n} 条词目",
+      "foot.count1": "{n} 条",
+      "foot.none": "0 条",
+      "foot.ai": "AI 翻译 · {n} 条词目可查",
+      "detail.reading": "读音",
+      "detail.pinyin": "拼音",
+      "detail.zhuyin": "注音",
+      "detail.trad": "繁体",
+      "detail.hv": "汉越音",
+      "detail.nom": "字喃",
+      "detail.radical": "部首",
+      "detail.stroke": "笔画",
+      "detail.grade": "等级",
+      "detail.freq": "词频",
+      "detail.ids": "部件",
+      "detail.more": "查看完整词条 ›",
+      "fam.starts": "以「{w}」开头",
+      "fam.contains": "包含「{w}」",
+      "tag.word": "词",
+      "tag.char": "字",
+      "vi.hero.label": "对应中文",
+      "note.charOnly": "此字目前只有越南语读音，尚无中文释义。",
+      "ai.dir.zh2vi": "中 → 越",
+      "ai.dir.vi2zh": "越 → 中",
+      "ai.script.hans": "简体",
+      "ai.script.hant": "繁体",
+      "ai.dirHint.zh2vi.hans": "简体中文 → 越南语",
+      "ai.dirHint.zh2vi.hant": "繁体中文 → 越南语",
+      "ai.dirHint.vi2zh.hans": "越南语 → 简体中文",
+      "ai.dirHint.vi2zh.hant": "越南语 → 繁体中文",
+      "ai.src.ph.zh2vi": "输入中文，译成越南语…",
+      "ai.src.ph.vi2zh": "Nhập tiếng Việt…（输入越南语，译成中文）",
+      "ai.sample": "示例",
+      "ai.clear": "清空",
+      "ai.go": "翻译",
+      "ai.busy": "翻译中",
+      "ai.copy": "复制译文",
+      "ai.copied": "已复制",
+      "ai.again": "重新翻译",
+      "ai.tip": "鼠标移到任一个词上（手机点一下），可即时查词典释义。",
+      "ai.tip.offline": "以上是按词典逐词替换的结果，只作对照，不能当译文用。点任一个词可查它的释义。",
+      "ai.err.offline": "改用词库逐词直译",
+      "ai.err.cfg": "检查设置",
+      "ai.err.title": "翻译失败：{msg}",
+      "ai.err.hint": "可改用词库逐词直译，或到下方设置换一个服务端点。",
+      "ai.err.timeout": "请求超时，服务没有回应。",
+      "ai.out.zh": "简体中文",
+      "ai.out.zhhant": "繁体中文",
+      "ai.out.vi": "越南语",
+      "ai.out.offline": "词库逐词对照 · 不是译文",
+      "ai.cfg": "翻译设置",
+      "ai.cfg.base": "服务地址",
+      "ai.cfg.model": "模型",
+      "ai.cfg.key": "API Key",
+      "ai.cfg.save": "存储",
+      "ai.cfg.saved": "已存储",
+      "ai.cfg.reset": "还原默认",
+      "ai.cfg.note": "默认接 B 站开源的 Index-Translate 免费公共接口（兼容 OpenAI 协议）。也可换成任何自架的 OpenAI 兼容端点，例如本机 <code>http://127.0.0.1:8000/v1</code>。",
+            "pop.lib": "词库",
+      "pop.miss": "词库未收录「{w}」。",
+      "pop.noZh": "找不到这个词的中文对应。",
+      "ai.lenWarn": "{n} 字（偏长）",
+"lang.label": "界面语言"
+    },
+    hant: {
+      "app.name": "漢南辭典",
+      "app.sub": "漢語 · 越南語 · 字喃",
+      "nav.dict": "查詞",
+      "nav.ai": "翻譯",
+      "search.ph": "輸入中文詞或越南語",
+      "search.clear": "清除",
+      "search.hint": "例：雞 ／ 苹果 ／ 电脑 ／ nước ／ gà",
+      "empty.title": "沒有找到",
+      "empty.sub": "可以換個說法，或試試單字。",
+      "foot.count": "{n} 條詞目",
+      "foot.count1": "{n} 條",
+      "foot.none": "0 條",
+      "foot.ai": "AI 翻譯 · {n} 條詞目可查",
+      "detail.reading": "讀音",
+      "detail.pinyin": "拼音",
+      "detail.zhuyin": "注音",
+      "detail.trad": "繁體",
+      "detail.hv": "漢越音",
+      "detail.nom": "字喃",
+      "detail.radical": "部首",
+      "detail.stroke": "筆畫",
+      "detail.grade": "等級",
+      "detail.freq": "詞頻",
+      "detail.ids": "部件",
+      "detail.more": "查看完整詞條 ›",
+      "fam.starts": "以「{w}」開頭",
+      "fam.contains": "包含「{w}」",
+      "tag.word": "詞",
+      "tag.char": "字",
+      "vi.hero.label": "對應中文",
+      "note.charOnly": "此字目前只有越南語讀音，尚無中文釋義。",
+      "ai.dir.zh2vi": "中 → 越",
+      "ai.dir.vi2zh": "越 → 中",
+      "ai.script.hans": "簡體",
+      "ai.script.hant": "繁體",
+      "ai.dirHint.zh2vi.hans": "简体中文 → 越南语",
+      "ai.dirHint.zh2vi.hant": "繁體中文 → 越南語",
+      "ai.dirHint.vi2zh.hans": "越南语 → 简体中文",
+      "ai.dirHint.vi2zh.hant": "越南語 → 繁體中文",
+      "ai.src.ph.zh2vi": "輸入中文，譯成越南語…",
+      "ai.src.ph.vi2zh": "Nhập tiếng Việt…（輸入越南語，譯成中文）",
+      "ai.sample": "範例",
+      "ai.clear": "清空",
+      "ai.go": "翻譯",
+      "ai.busy": "翻譯中",
+      "ai.copy": "複製譯文",
+      "ai.copied": "已複製",
+      "ai.again": "重新翻譯",
+      "ai.tip": "滑鼠移到任一個詞上（手機點一下），可即時查詞典釋義。",
+      "ai.tip.offline": "以上是按詞典逐詞替換的結果，只作對照，不能當譯文用。點任一個詞可查它的釋義。",
+      "ai.err.offline": "改用詞庫逐詞直譯",
+      "ai.err.cfg": "檢查設定",
+      "ai.err.title": "翻譯失敗：{msg}",
+      "ai.err.hint": "可改用詞庫逐詞直譯，或到下方設定換一個服務端點。",
+      "ai.err.timeout": "請求逾時，服務沒有回應。",
+      "ai.out.zh": "简体中文",
+      "ai.out.zhhant": "繁體中文",
+      "ai.out.vi": "越南語",
+      "ai.out.offline": "詞庫逐詞對照 · 不是譯文",
+      "ai.cfg": "翻譯設定",
+      "ai.cfg.base": "服務位址",
+      "ai.cfg.model": "模型",
+      "ai.cfg.key": "API Key",
+      "ai.cfg.save": "儲存",
+      "ai.cfg.saved": "已儲存",
+      "ai.cfg.reset": "還原預設",
+      "ai.cfg.note": "預設接 B 站開源的 Index-Translate 免費公共介面（相容 OpenAI 協議）。也可換成任何自架的 OpenAI 相容端點，例如本機 <code>http://127.0.0.1:8000/v1</code>。",
+            "pop.lib": "詞庫",
+      "pop.miss": "詞庫未收錄「{w}」。",
+      "pop.noZh": "找不到這個詞的中文對應。",
+      "ai.lenWarn": "{n} 字（偏長）",
+"lang.label": "介面語言"
+    },
+    vi: {
+      "app.name": "Từ điển Trung–Việt",
+      "app.sub": "Trung · Việt · Nôm",
+      "nav.dict": "Tra từ",
+      "nav.ai": "Dịch",
+      "search.ph": "Nhập từ Trung hoặc tiếng Việt",
+      "search.clear": "Xóa",
+      "search.hint": "Ví dụ: 雞 ／ 苹果 ／ 电脑 ／ nước ／ gà",
+      "empty.title": "Không tìm thấy",
+      "empty.sub": "Thử cách nói khác, hoặc tra từng chữ.",
+      "foot.count": "{n} mục từ",
+      "foot.count1": "{n} mục",
+      "foot.none": "0 mục",
+      "foot.ai": "Dịch AI · {n} mục từ tra được",
+      "detail.reading": "Âm đọc",
+      "detail.pinyin": "Pinyin",
+      "detail.zhuyin": "Chú âm",
+      "detail.trad": "Phồn thể",
+      "detail.hv": "Hán Việt",
+      "detail.nom": "Chữ Nôm",
+      "detail.radical": "Bộ thủ",
+      "detail.stroke": "Số nét",
+      "detail.grade": "Bậc",
+      "detail.freq": "Tần suất",
+      "detail.ids": "Cấu tạo",
+      "detail.more": "Xem mục từ đầy đủ ›",
+      "fam.starts": "Bắt đầu bằng「{w}」",
+      "fam.contains": "Chứa「{w}」",
+      "tag.word": "Từ",
+      "tag.char": "Chữ",
+      "vi.hero.label": "Từ Hán tương ứng",
+      "note.charOnly": "Chữ này hiện chỉ có âm đọc tiếng Việt, chưa có nghĩa Hán.",
+      "ai.dir.zh2vi": "Trung → Việt",
+      "ai.dir.vi2zh": "Việt → Trung",
+      "ai.script.hans": "Giản thể",
+      "ai.script.hant": "Phồn thể",
+      "ai.dirHint.zh2vi.hans": "Tiếng Trung giản thể → tiếng Việt",
+      "ai.dirHint.zh2vi.hant": "Tiếng Trung phồn thể → tiếng Việt",
+      "ai.dirHint.vi2zh.hans": "Tiếng Việt → tiếng Trung giản thể",
+      "ai.dirHint.vi2zh.hant": "Tiếng Việt → tiếng Trung phồn thể",
+      "ai.src.ph.zh2vi": "Nhập tiếng Trung để dịch sang tiếng Việt…",
+      "ai.src.ph.vi2zh": "Nhập tiếng Việt để dịch sang tiếng Trung…",
+      "ai.sample": "Ví dụ",
+      "ai.clear": "Xóa",
+      "ai.go": "Dịch",
+      "ai.busy": "Đang dịch",
+      "ai.copy": "Sao chép",
+      "ai.copied": "Đã sao chép",
+      "ai.again": "Dịch lại",
+      "ai.tip": "Di chuột lên từ bất kỳ (hoặc chạm trên điện thoại) để tra nghĩa trong từ điển.",
+      "ai.tip.offline": "Đây là kết quả tra từng từ trong từ điển, chỉ để đối chiếu, không phải bản dịch. Chạm vào từ để xem nghĩa.",
+      "ai.err.offline": "Dùng tra từng từ",
+      "ai.err.cfg": "Kiểm tra cài đặt",
+      "ai.err.title": "Dịch thất bại: {msg}",
+      "ai.err.hint": "Có thể dùng tra từng từ, hoặc đổi điểm cuối dịch vụ bên dưới.",
+      "ai.err.timeout": "Hết thời gian chờ, dịch vụ không phản hồi.",
+      "ai.out.zh": "Tiếng Trung giản thể",
+      "ai.out.zhhant": "Tiếng Trung phồn thể",
+      "ai.out.vi": "Tiếng Việt",
+      "ai.out.offline": "Tra từng từ · không phải bản dịch",
+      "ai.cfg": "Cài đặt dịch",
+      "ai.cfg.base": "Địa chỉ dịch vụ",
+      "ai.cfg.model": "Mô hình",
+      "ai.cfg.key": "API Key",
+      "ai.cfg.save": "Lưu",
+      "ai.cfg.saved": "Đã lưu",
+      "ai.cfg.reset": "Mặc định",
+      "ai.cfg.note": "Mặc định dùng Index-Translate của Bilibili (tương thích giao thức OpenAI). Có thể đổi sang bất kỳ điểm cuối tương thích OpenAI nào, ví dụ <code>http://127.0.0.1:8000/v1</code>.",
+            "pop.lib": "Từ điển",
+      "pop.miss": "Từ điển chưa có「{w}」.",
+      "pop.noZh": "Không tìm thấy từ Hán tương ứng.",
+      "ai.lenWarn": "{n} ký tự（hơi dài）",
+"lang.label": "Ngôn ngữ giao diện"
+    },
+    en: {
+      "app.name": "Sino-Vietnamese Dictionary",
+      "app.sub": "Chinese · Vietnamese · Nôm",
+      "nav.dict": "Dictionary",
+      "nav.ai": "Translate",
+      "search.ph": "Search Chinese or Vietnamese",
+      "search.clear": "Clear",
+      "search.hint": "e.g. 雞 ／ 苹果 ／ 电脑 ／ nước ／ gà",
+      "empty.title": "No results",
+      "empty.sub": "Try another wording, or search a single character.",
+      "foot.count": "{n} entries",
+      "foot.count1": "{n} entries",
+      "foot.none": "0 entries",
+      "foot.ai": "AI translate · {n} entries searchable",
+      "detail.reading": "Reading",
+      "detail.pinyin": "Pinyin",
+      "detail.zhuyin": "Zhuyin",
+      "detail.trad": "Traditional",
+      "detail.hv": "Sino-Vietnamese",
+      "detail.nom": "Nôm",
+      "detail.radical": "Radical",
+      "detail.stroke": "Strokes",
+      "detail.grade": "Grade",
+      "detail.freq": "Frequency",
+      "detail.ids": "Structure",
+      "detail.more": "View full entry ›",
+      "fam.starts": "Starting with “{w}”",
+      "fam.contains": "Containing “{w}”",
+      "tag.word": "word",
+      "tag.char": "char",
+      "vi.hero.label": "Chinese equivalents",
+      "note.charOnly": "This character currently has only a Vietnamese reading, no Chinese gloss.",
+      "ai.dir.zh2vi": "ZH → VI",
+      "ai.dir.vi2zh": "VI → ZH",
+      "ai.script.hans": "Simplified",
+      "ai.script.hant": "Traditional",
+      "ai.dirHint.zh2vi.hans": "Simplified Chinese → Vietnamese",
+      "ai.dirHint.zh2vi.hant": "Traditional Chinese → Vietnamese",
+      "ai.dirHint.vi2zh.hans": "Vietnamese → Simplified Chinese",
+      "ai.dirHint.vi2zh.hant": "Vietnamese → Traditional Chinese",
+      "ai.src.ph.zh2vi": "Type Chinese to translate into Vietnamese…",
+      "ai.src.ph.vi2zh": "Type Vietnamese to translate into Chinese…",
+      "ai.sample": "Example",
+      "ai.clear": "Clear",
+      "ai.go": "Translate",
+      "ai.busy": "Translating",
+      "ai.copy": "Copy",
+      "ai.copied": "Copied",
+      "ai.again": "Translate again",
+      "ai.tip": "Hover any word (tap on mobile) to look it up in the dictionary.",
+      "ai.tip.offline": "This is a word-by-word gloss from the dictionary, not a translation. Tap any word for its entry.",
+      "ai.err.offline": "Use word-by-word gloss",
+      "ai.err.cfg": "Check settings",
+      "ai.err.title": "Translation failed: {msg}",
+      "ai.err.hint": "You can fall back to the word-by-word gloss, or point to another endpoint below.",
+      "ai.err.timeout": "Request timed out; the service did not respond.",
+      "ai.out.zh": "Simplified Chinese",
+      "ai.out.zhhant": "Traditional Chinese",
+      "ai.out.vi": "Vietnamese",
+      "ai.out.offline": "Word-by-word gloss · not a translation",
+      "ai.cfg": "Translation settings",
+      "ai.cfg.base": "Endpoint",
+      "ai.cfg.model": "Model",
+      "ai.cfg.key": "API Key",
+      "ai.cfg.save": "Save",
+      "ai.cfg.saved": "Saved",
+      "ai.cfg.reset": "Reset defaults",
+      "ai.cfg.note": "Defaults to the free public Index-Translate endpoint from Bilibili (OpenAI-compatible). You can point it to any OpenAI-compatible endpoint, e.g. <code>http://127.0.0.1:8000/v1</code>.",
+            "pop.lib": "Dictionary",
+      "pop.miss": "“{w}” is not in the dictionary.",
+      "pop.noZh": "No Chinese equivalent found.",
+      "ai.lenWarn": "{n} chars (a bit long)",
+"lang.label": "Interface language"
+    }
+  };
+
+  var LANG_NAMES = { hans: "简体中文", hant: "繁體中文", vi: "Tiếng Việt", en: "English" };
+  var STORE = "hanviet.ui.lang";
+
+  function detect() {
+    var saved = "";
+    try { saved = localStorage.getItem(STORE) || ""; } catch (e) {}
+    if (saved && DICT[saved]) return saved;
+    var ls = (navigator.languages || [navigator.language || "en"]).map(function (x) {
+      return String(x).toLowerCase();
+    });
+    for (var i = 0; i < ls.length; i++) {
+      var l = ls[i];
+      if (l.indexOf("vi") === 0) return "vi";
+      if (l === "zh-hant" || l === "zh-tw" || l === "zh-hk" || l === "zh-mo") return "hant";
+      if (l.indexOf("zh") === 0) return "hans";
+    }
+    return "en";
+  }
+
+  var cur = detect();
+
+  function t(key, vars) {
+    var row = DICT[cur][key] != null ? DICT[cur][key] : (DICT.hant[key] != null ? DICT.hant[key] : key);
+    if (vars) {
+      for (var k in vars) row = row.replace("{" + k + "}", vars[k]);
+    }
+    return row;
+  }
+
+  function apply(root) {
+    (root || document).querySelectorAll("[data-i18n]").forEach(function (el) {
+      el.textContent = t(el.getAttribute("data-i18n"));
+    });
+    (root || document).querySelectorAll("[data-i18n-html]").forEach(function (el) {
+      el.innerHTML = t(el.getAttribute("data-i18n-html"));
+    });
+    (root || document).querySelectorAll("[data-i18n-ph]").forEach(function (el) {
+      el.setAttribute("placeholder", t(el.getAttribute("data-i18n-ph")));
+    });
+    (root || document).querySelectorAll("[data-i18n-aria]").forEach(function (el) {
+      el.setAttribute("aria-label", t(el.getAttribute("data-i18n-aria")));
+    });
+    document.documentElement.lang = cur === "hans" ? "zh-Hans" : cur === "hant" ? "zh-Hant" : cur;
+  }
+
+  function setLang(l) {
+    if (!DICT[l]) return;
+    cur = l;
+    try { localStorage.setItem(STORE, l); } catch (e) {}
+    apply();
+  }
+
+  window.I18N = { t: t, apply: apply, setLang: setLang, lang: function () { return cur; }, names: LANG_NAMES, detect: detect };
+  window.t = t;
+})();

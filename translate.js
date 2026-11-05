@@ -37,12 +37,10 @@
   var st = { view: "dict", dir: "zh2vi", script: "hans", busy: false, out: "", lang: "" };
 
   function dirLabel() {
-    if (st.dir === "zh2vi") return st.script === "hant" ? "繁體中文 → 越南語" : "简体中文 → 越南语";
-    return st.script === "hant" ? "越南語 → 繁體中文" : "越南语 → 简体中文";
+    return t("ai.dirHint." + st.dir + "." + st.script);
   }
   function placeholder() {
-    if (st.dir === "zh2vi") return "輸入中文，譯成越南語…";
-    return "Nhập tiếng Việt…（輸入越南語，譯成中文）";
+    return t(st.dir === "zh2vi" ? "ai.src.ph.zh2vi" : "ai.src.ph.vi2zh");
   }
   function sampleText() {
     if (st.dir === "vi2zh") return "Hôm qua anh ấy không đi làm vì bị sốt.";
@@ -260,7 +258,7 @@
 
   function nonePop(w) {
     return '<div class="ptop"><span class="pvi-big" style="color:#2b2118">' + esc(w) + "</span></div>" +
-      '<div class="plabel">詞庫</div><div class="pop-none">詞庫未收錄「<b>' + esc(w) + "</b>」。</div>";
+      '<div class="plabel">' + t("pop.lib") + '</div><div class="pop-none">' + t("pop.miss", { w: esc(w) }) + "</div>";
   }
 
   function popZh(w) {
@@ -272,14 +270,14 @@
       '<span class="pmeta"><span class="ppy">' + esc(e[2]) + "</span>" +
       (HV.zhuyin ? '<span class="pzy">' + esc(HV.zhuyin(e[2])) + "</span>" : "") +
       "</span></div>";
-    if (tr) h += '<div class="prow"><b>繁體</b><span>' + esc(tr) + "</span></div>";
-    if (e[4]) h += '<div class="prow"><b>漢越</b><span>' + esc(e[4]) + "</span></div>";
+    if (tr) h += '<div class="prow"><b>' + t("detail.trad") + '</b><span>' + esc(tr) + "</span></div>";
+    if (e[4]) h += '<div class="prow"><b>' + t("detail.hv") + '</b><span>' + esc(e[4]) + "</span></div>";
     if (ss[0]) {
       h += '<div class="pvi">' + esc(ss[0]) +
         (e[5] ? '<span class="pnom">' + esc(e[5]) + "</span>" : "") + "</div>";
     }
     if (ss.length > 1) h += '<div class="poth">' + ss.slice(1, 3).map(esc).join("；") + "</div>";
-    h += '<div class="pfoot" data-open="' + i + '">查看完整詞條 ›</div>';
+    h += '<div class="pfoot" data-open="' + i + '">' + t("detail.more") + "</div>";
     return h;
   }
 
@@ -289,15 +287,15 @@
     var h = '<div class="ptop"><span class="pvi-big">' + esc(w) + "</span>" +
       (nom ? '<span class="pnom">' + esc(nom) + "</span>" : "") + "</div>";
     if (!hits.length) {
-      return h + '<div class="plabel">詞庫</div><div class="pop-none">找不到這個詞的中文對應。</div>';
+      return h + '<div class="plabel">' + t("pop.lib") + '</div><div class="pop-none">' + t("pop.noZh") + "</div>";
     }
-    h += '<div class="plabel">對應中文</div>';
+    h += '<div class="plabel">' + t("vi.hero.label") + "</div>";
     hits.slice(0, 4).forEach(function (i) {
       var e = ZV[i];
       h += '<div class="pitem"><span class="pw">' + esc(e[1]) + "</span>" +
         '<span class="pp">' + esc(e[2]) + "</span></div>";
     });
-    h += '<div class="pfoot" data-open="' + hits[0] + '">查看完整詞條 ›</div>';
+    h += '<div class="pfoot" data-open="' + hits[0] + '">' + t("detail.more") + "</div>";
     return h;
   }
 
@@ -339,7 +337,7 @@
   function renderOut(text, lang, meta) {
     st.out = text;
     st.lang = lang;
-    outLabel.textContent = lang === "vi" ? "越南語" : (st.script === "hant" ? "繁體中文" : "简体中文");
+    outLabel.textContent = lang === "vi" ? t("ai.out.vi") : (st.script === "hant" ? t("ai.out.zhhant") : t("ai.out.zh"));
     outMeta.textContent = meta || "";
     tokensEl.className = "tokline" + (lang === "vi" ? " vi" : "");
     var toks = lang === "vi" ? segVi(text) : segZh(text);
@@ -430,8 +428,8 @@
 
   function footer() {
     countEl.textContent = st.view === "ai"
-      ? "AI 翻譯 · " + ZV.length.toLocaleString() + " 條詞目可查"
-      : ZV.length.toLocaleString() + " 條詞目";
+      ? t("foot.ai", { n: ZV.length.toLocaleString() })
+      : t("foot.count", { n: ZV.length.toLocaleString() });
   }
 
   function setView(v) {
@@ -501,7 +499,7 @@
     if (!text || st.busy) return;
     st.busy = true;
     goBtn.disabled = true;
-    goBtn.textContent = "翻譯中";
+    goBtn.textContent = t("ai.busy");
     errBox.hidden = true;
     warmVi();
     viPhrases();
@@ -513,13 +511,13 @@
           : "Index-Translate · " + (ms / 1000).toFixed(1) + "s");
     }).catch(function (e) {
       var m = String(e && e.message || e);
-      if (e && e.name === "AbortError") m = "請求逾時，服務沒有回應。";
-      showErr("翻譯失敗：" + m, "可改用詞庫逐詞直譯，或到下方設定換一個服務端點。");
+      if (e && e.name === "AbortError") m = t("ai.err.timeout");
+      showErr(t("ai.err.title", { msg: m }), t("ai.err.hint"));
       $("out").hidden = true;
     }).then(function () {
       st.busy = false;
       goBtn.disabled = false;
-      goBtn.textContent = "翻譯";
+      goBtn.textContent = t("ai.go");
     });
   }
 
@@ -528,7 +526,7 @@
     var n = src.value.length;
     $("srcCount").textContent = n ? n : "0";
     $("clearSrc").hidden = !n;
-    if (src.value.length > 3000) $("srcCount").textContent = n + " 字（偏長）";
+    if (src.value.length > 3000) $("srcCount").textContent = t("ai.lenWarn", { n: n });
   });
   src.addEventListener("keydown", function (ev) {
     if ((ev.metaKey || ev.ctrlKey) && ev.key === "Enter") { ev.preventDefault(); run(); }
@@ -552,8 +550,8 @@
     var t = st.out;
     var done = function () {
       var b = $("copy");
-      b.textContent = "已複製";
-      setTimeout(function () { b.textContent = "複製譯文"; }, 1200);
+      b.textContent = t("ai.copied");
+      setTimeout(function () { b.textContent = t("ai.copy"); }, 1200);
     };
     if (navigator.clipboard && navigator.clipboard.writeText) {
       navigator.clipboard.writeText(t).then(done, fallback);
@@ -574,9 +572,9 @@
     var text = src.value.trim();
     if (!text) return;
     warmVi();
-    renderOut(offlineTranslate(text), st.dir === "zh2vi" ? "vi" : "zh", "詞庫逐詞對照 · 不是譯文");
+    renderOut(offlineTranslate(text), st.dir === "zh2vi" ? "vi" : "zh", t("ai.out.offline"));
     var tip = document.querySelector("#out .tip");
-    if (tip) tip.textContent = "以上是按詞典逐詞替換的結果，只作對照，不能當譯文用。點任一個詞可查它的釋義。";
+    if (tip) tip.textContent = t("ai.tip.offline");
     errBox.hidden = true;
   });
 
@@ -599,8 +597,8 @@
       model: $("cfgModel").value.trim() || DEF.model,
       key: $("cfgKey").value.trim() || DEF.key
     });
-    $("cfgSave").textContent = "已儲存";
-    setTimeout(function () { $("cfgSave").textContent = "儲存"; }, 1200);
+    $("cfgSave").textContent = t("ai.cfg.saved");
+    setTimeout(function () { $("cfgSave").textContent = t("ai.cfg.save"); }, 1200);
   });
   $("cfgReset").addEventListener("click", function () {
     saveCfg(DEF);
@@ -647,6 +645,11 @@
   });
 
   // ================= 初始化 =================
+  document.addEventListener("langchange", function () {
+    refreshDir();
+    footer();
+  });
+
   var qs = new URLSearchParams(location.search);
   if (qs.get("view") === "ai") {
     setView("ai");

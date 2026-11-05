@@ -4,41 +4,49 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#faf7f2">
-<title>漢喃詞典 · Hán Nôm</title>
+<title>漢南辭典</title>
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
 <header class="top">
   <div class="brandrow">
     <div class="brand">
-      <h1>漢喃詞典</h1>
-      <p class="sub">漢語 · 越南語 · 字喃</p>
+      <h1 data-i18n="app.name">漢南辭典</h1>
+      <p class="sub" data-i18n="app.sub">漢語 · 越南語 · 字喃</p>
     </div>
-    <nav class="tabs" id="tabs" role="tablist">
-      <button class="tab on" data-view="dict" role="tab">查詞</button>
-      <button class="tab" data-view="ai" role="tab">翻譯</button>
-    </nav>
+    <div class="topright">
+      <select id="lang" class="langsel" aria-label="Interface language">
+        <option value="hans">简体中文</option>
+        <option value="hant">繁體中文</option>
+        <option value="vi">Tiếng Việt</option>
+        <option value="en">English</option>
+      </select>
+      <nav class="tabs" id="tabs" role="tablist">
+        <button class="tab on" data-view="dict" role="tab" data-i18n="nav.dict">查詞</button>
+        <button class="tab" data-view="ai" role="tab" data-i18n="nav.ai">翻譯</button>
+      </nav>
+    </div>
   </div>
 
   <div id="dictBar">
     <div class="searchbox">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5L20 20"/></svg>
       <input id="q" type="search" autocomplete="off" spellcheck="false"
-             placeholder="輸入中文詞或越南語">
-      <button id="clear" aria-label="清除" hidden>×</button>
+             data-i18n-ph="search.ph" placeholder="輸入中文詞或越南語">
+      <button id="clear" data-i18n-aria="search.clear" aria-label="清除" hidden>×</button>
     </div>
-    <div class="hint" id="hint">例：雞 ／ 苹果 ／ 电脑 ／ nước ／ gà</div>
+    <div class="hint" id="hint" data-i18n="search.hint">例：雞 ／ 苹果 ／ 电脑 ／ nước ／ gà</div>
   </div>
 
   <div id="aiBar" hidden>
     <div class="segrow">
       <div class="seg" id="dirSeg">
-        <button class="on" data-dir="zh2vi">中 → 越</button>
-        <button data-dir="vi2zh">越 → 中</button>
+        <button class="on" data-dir="zh2vi" data-i18n="ai.dir.zh2vi">中 → 越</button>
+        <button data-dir="vi2zh" data-i18n="ai.dir.vi2zh">越 → 中</button>
       </div>
       <div class="seg sm" id="scriptSeg">
-        <button class="on" data-script="hans">簡體</button>
-        <button data-script="hant">繁體</button>
+        <button class="on" data-script="hans" data-i18n="ai.script.hans">簡體</button>
+        <button data-script="hant" data-i18n="ai.script.hant">繁體</button>
       </div>
     </div>
     <div class="hint" id="dirHint">简体中文 → 越南语</div>
@@ -49,20 +57,20 @@
   <section id="dictView">
     <section id="results" aria-live="polite"></section>
     <section id="empty" class="empty" hidden>
-      <p class="big">沒有找到</p>
-      <p class="small">可以換個說法，或試試單字。</p>
+      <p class="big" data-i18n="empty.title">沒有找到</p>
+      <p class="small" data-i18n="empty.sub">可以換個說法，或試試單字。</p>
     </section>
   </section>
 
   <section id="aiView" hidden>
     <div class="ai-in">
-      <textarea id="src" rows="4" spellcheck="false" placeholder="在這裡輸入要翻譯的內容…"></textarea>
+      <textarea id="src" rows="4" spellcheck="false" data-i18n-ph="ai.src.ph.zh2vi" placeholder="在這裡輸入要翻譯的內容…"></textarea>
       <div class="ai-bar">
         <span class="cnt" id="srcCount">0</span>
-        <button class="linky" id="sample">範例</button>
+        <button class="linky" id="sample" data-i18n="ai.sample">範例</button>
         <span class="spacer"></span>
-        <button class="ghost" id="clearSrc" hidden>清空</button>
-        <button class="primary" id="go">翻譯</button>
+        <button class="ghost" id="clearSrc" data-i18n="ai.clear" hidden>清空</button>
+        <button class="primary" id="go" data-i18n="ai.go">翻譯</button>
       </div>
     </div>
 
@@ -73,34 +81,34 @@
       </div>
       <div class="tokline" id="tokens"></div>
       <div class="out-actions">
-        <button class="ghost" id="copy">複製譯文</button>
-        <button class="ghost" id="again">重新翻譯</button>
+        <button class="ghost" id="copy" data-i18n="ai.copy">複製譯文</button>
+        <button class="ghost" id="again" data-i18n="ai.again">重新翻譯</button>
       </div>
-      <div class="tip">滑鼠移到任一個詞上（手機點一下），可即時查詞典釋義。</div>
+      <div class="tip" data-i18n="ai.tip">滑鼠移到任一個詞上（手機點一下），可即時查詞典釋義。</div>
     </div>
 
     <div id="err" class="err" hidden>
       <div class="err-msg" id="errMsg"></div>
       <div class="err-act">
-        <button class="ghost" id="offline">改用詞庫逐詞直譯</button>
-        <button class="ghost" id="toCfg">檢查設定</button>
+        <button class="ghost" id="offline" data-i18n="ai.err.offline">改用詞庫逐詞直譯</button>
+        <button class="ghost" id="toCfg" data-i18n="ai.err.cfg">檢查設定</button>
       </div>
     </div>
 
     <details class="cfg" id="cfg">
-      <summary>翻譯設定</summary>
+      <summary data-i18n="ai.cfg">翻譯設定</summary>
       <div class="cfg-body">
-        <label class="fld"><span>服務位址</span>
+        <label class="fld"><span data-i18n="ai.cfg.base">服務位址</span>
           <input id="cfgBase" type="text" autocomplete="off" spellcheck="false"></label>
-        <label class="fld"><span>模型</span>
+        <label class="fld"><span data-i18n="ai.cfg.model">模型</span>
           <input id="cfgModel" type="text" autocomplete="off" spellcheck="false"></label>
-        <label class="fld"><span>API Key</span>
+        <label class="fld"><span data-i18n="ai.cfg.key">API Key</span>
           <input id="cfgKey" type="text" autocomplete="off" spellcheck="false"></label>
         <div class="cfg-act">
-          <button class="ghost" id="cfgSave">儲存</button>
-          <button class="ghost" id="cfgReset">還原預設</button>
+          <button class="ghost" id="cfgSave" data-i18n="ai.cfg.save">儲存</button>
+          <button class="ghost" id="cfgReset" data-i18n="ai.cfg.reset">還原預設</button>
         </div>
-        <p class="cfg-note">預設接 B 站開源的 Index-Translate 免費公共介面（相容 OpenAI 協議）。也可換成任何自架的 OpenAI 相容端點，例如本機 <code>http://127.0.0.1:8000/v1</code>。</p>
+        <p class="cfg-note" data-i18n-html="ai.cfg.note"></p>
       </div>
     </details>
   </section>
@@ -108,7 +116,7 @@
 
 <div id="sheet" class="sheet" hidden>
   <div class="sheet-card" role="dialog" aria-modal="true">
-    <button id="close" class="close" aria-label="關閉">×</button>
+    <button id="close" class="close" data-i18n-aria="search.clear" aria-label="關閉">×</button>
     <div id="sheet-body"></div>
   </div>
 </div>
@@ -118,9 +126,10 @@
 <footer class="foot">
   <span id="count"></span>
   <span class="dot">·</span>
-  <span class="src">CVDICT · chunom.org</span>
+  <span>CVDICT · chunom.org</span>
 </footer>
 
+<script src="i18n.js?v=1"></script>
 <script src="nom.js?v=3"></script>
 <script src="zhvi.js?v=3"></script>
 <script src="app.js?v=3"></script>

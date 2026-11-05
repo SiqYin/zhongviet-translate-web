@@ -182,7 +182,7 @@
           '<div class="py">' + esc(e[2]) + "</div>" +
           '<div class="zy">' + esc(zhuyin(e[2])) + "</div>" +
           (tr ? '<div class="trad">' + esc(tr) + "</div>" : "") +
-          (e[4] ? '<div class="hv">漢越音 ' + esc(e[4]) + "</div>" : "") +
+          (e[4] ? '<div class="hv">' + t("detail.hv") + " " + esc(e[4]) + "</div>" : "") +
         "</div>" +
       "</div>" +
       '<div class="answer"><span class="vi-big">' + esc(primary) + nomTag(e[5]) + "</span></div>";
@@ -197,12 +197,12 @@
   function famBlock(fam) {
     var html = "";
     if (fam.starts.length) {
-      html += '<div class="fam"><div class="fam-title">以「' + esc(fam.key || "") + '」開頭</div>';
+      html += '<div class="fam"><div class="fam-title">' + esc(t("fam.starts", { w: fam.key || "" })) + "</div>";
       fam.starts.forEach(function (k) { html += famRow(k); });
       html += "</div>";
     }
     if (fam.contains.length) {
-      html += '<div class="fam"><div class="fam-title">包含「' + esc(fam.key || "") + '」</div>';
+      html += '<div class="fam"><div class="fam-title">' + esc(t("fam.contains", { w: fam.key || "" })) + "</div>";
       fam.contains.forEach(function (k) { html += famRow(k); });
       html += "</div>";
     }
@@ -251,7 +251,7 @@
         '<div class="hz-sm">' + esc(e[1]) + "</div>" +
         '<div class="word">' +
           '<div class="vi">' + esc(firstSense(e)) + "</div>" +
-          '<div class="zh">' + esc(e[2]) + (e[4] ? " · 漢越音 " + esc(e[4]) : "") + "</div>" +
+          '<div class="zh">' + esc(e[2]) + (e[4] ? " · " + t("detail.hv") + " " + esc(e[4]) : "") + "</div>" +
         "</div>" +
         (e[5] ? '<div class="nom-r">' + esc(e[5]) + "</div>" : "") +
       "</div></article>";
@@ -268,7 +268,7 @@
         '<div class="hz vi-big">' + esc(key) + "</div>" +
         '<div class="hz-side">' + nomTag(nom, "nom-sm") + "</div>" +
       "</div>" +
-      '<div class="senses">對應中文詞</div>' +
+      '<div class="senses">' + t("vi.hero.label") + "</div>" +
       '<div class="fam">';
     list.slice(0, 24).forEach(function (i) {
       var e = ZV[i];
@@ -285,7 +285,21 @@
     if (!q) {
       resultsEl.innerHTML = "";
       emptyEl.hidden = true;
-      countEl.textContent = ZV.length.toLocaleString() + " 條詞目";
+      // ---------- 界面語言 ----------
+  I18N.apply();
+  document.title = t("app.name");
+  var langSel = document.getElementById("lang");
+  if (langSel) {
+    langSel.value = I18N.lang();
+    langSel.addEventListener("change", function () {
+      I18N.setLang(langSel.value);
+      document.title = t("app.name");
+      render(input.value);
+      document.dispatchEvent(new Event("langchange"));
+    });
+  }
+
+  countEl.textContent = t("foot.count", { n: ZV.length.toLocaleString() });
       return;
     }
     var isCJK = /[\u3400-\u4dbf\u4e00-\u9fff]/.test(q);
@@ -302,7 +316,7 @@
 
     resultsEl.innerHTML = html;
     emptyEl.hidden = n > 0;
-    countEl.textContent = n ? n + " 條" : "0 條";
+    countEl.textContent = n ? t("foot.count1", { n: n }) : t("foot.none");
   }
 
   function detailZv(i) {
@@ -313,10 +327,10 @@
       '<div class="det-vi">' + esc(firstSense(e)) + nomTag(e[5], "nom-md") + "</div>" +
       '<div class="det-senses">' + esc(e[3]) + "</div>" +
       '<dl class="defs">' +
-      '<div class="def"><dt>拼音</dt><dd>' + esc(e[2]) + "</dd></div>" +
-      (e[0] !== e[1] ? '<div class="def"><dt>繁體</dt><dd>' + esc(e[0]) + "</dd></div>" : "") +
-      (e[4] ? '<div class="def"><dt>漢越音</dt><dd>' + esc(e[4]) + "</dd></div>" : "") +
-      (e[5] ? '<div class="def"><dt>字喃</dt><dd><span class="ids">' + esc(e[5]) + "</span></dd></div>" : "") +
+      '<div class="def"><dt>' + t("detail.pinyin") + '</dt><dd>' + esc(e[2]) + "</dd></div>" +
+      (e[0] !== e[1] ? '<div class="def"><dt>' + t("detail.trad") + '</dt><dd>' + esc(e[0]) + "</dd></div>" : "") +
+      (e[4] ? '<div class="def"><dt>' + t("detail.hv") + '</dt><dd>' + esc(e[4]) + "</dd></div>" : "") +
+      (e[5] ? '<div class="def"><dt>' + t("detail.nom") + '</dt><dd><span class="ids">' + esc(e[5]) + "</span></dd></div>" : "") +
       "</dl>";
     html += famBlock(fam);
     openSheet(html);
@@ -365,7 +379,21 @@
     detail: detailZv, openSheet: openSheet
   };
 
-  countEl.textContent = ZV.length.toLocaleString() + " 條詞目";
+  // ---------- 界面語言 ----------
+  I18N.apply();
+  document.title = t("app.name");
+  var langSel = document.getElementById("lang");
+  if (langSel) {
+    langSel.value = I18N.lang();
+    langSel.addEventListener("change", function () {
+      I18N.setLang(langSel.value);
+      document.title = t("app.name");
+      render(input.value);
+      document.dispatchEvent(new Event("langchange"));
+    });
+  }
+
+  countEl.textContent = t("foot.count", { n: ZV.length.toLocaleString() });
 
   var pre = new URLSearchParams(location.search).get("q");
   if (pre) {
