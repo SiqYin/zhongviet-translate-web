@@ -352,7 +352,15 @@ main{max-width:720px;margin:0 auto;padding:10px 16px 0}
 .langsel{
   border:1px solid var(--line);background:var(--card);color:#6b5c48;
   border-radius:8px;font-size:11px;padding:4px 6px;cursor:pointer;max-width:104px;
+  font-family:inherit;text-align:center;line-height:1.4;
 }
+.langlist{display:flex;flex-direction:column;gap:8px;margin-top:10px}
+.langlist button{
+  height:44px;border-radius:10px;border:1px solid var(--line);background:#fff;
+  font-size:14px;color:var(--ink);cursor:pointer;font-family:inherit;position:relative;
+}
+.langlist button.on{border-color:var(--accent);color:var(--accent);font-weight:700;background:var(--accent-soft)}
+.langlist button.on::after{content:"✓";position:absolute;right:14px;top:50%;transform:translateY(-50%);font-size:13px}
 .langsel:focus{outline:none;border-color:#c9b79a}
 @media(max-width:420px){ .langsel{max-width:88px;font-size:10px;padding:3px 4px} .brand h1{font-size:17px} }
 

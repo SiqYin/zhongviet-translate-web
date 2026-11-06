@@ -16,12 +16,7 @@
       <p class="sub" data-i18n="app.sub">漢語 · 越南語 · 字喃</p>
     </div>
     <div class="topright">
-      <select id="lang" class="langsel" aria-label="Interface language">
-        <option value="hans">简体中文</option>
-        <option value="hant">繁體中文</option>
-        <option value="vi">Tiếng Việt</option>
-        <option value="en">English</option>
-      </select>
+      <button id="langBtn" class="langsel" type="button" aria-label="Interface language">繁體中文</button>
       <nav class="tabs" id="tabs" role="tablist">
         <button class="tab on" data-view="dict" role="tab" data-i18n="nav.dict">查詞</button>
         <button class="tab" data-view="ai" role="tab" data-i18n="nav.ai">翻譯</button>
@@ -129,6 +124,18 @@
     <div class="upd-btns">
       <button id="upd-later" class="btn-ghost" data-i18n="update.later">暂不下载</button>
       <button id="upd-go" class="btn-primary" data-i18n="update.download">前往下载</button>
+    </div>
+  </div>
+</div>
+
+<div id="lang-dialog" class="upd" hidden>
+  <div class="upd-card" role="dialog" aria-modal="true">
+    <div class="upd-title" data-i18n="lang.label">界面语言</div>
+    <div class="langlist" id="langlist">
+      <button type="button" data-lang="hans">简体中文</button>
+      <button type="button" data-lang="hant">繁體中文</button>
+      <button type="button" data-lang="vi">Tiếng Việt</button>
+      <button type="button" data-lang="en">English</button>
     </div>
   </div>
 </div>

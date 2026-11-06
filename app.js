@@ -403,15 +403,39 @@
   // ---------- 界面語言 ----------
   I18N.apply();
   document.title = t("app.name");
-  var langSel = document.getElementById("lang");
-  if (langSel) {
-    langSel.value = I18N.lang();
-    langSel.addEventListener("change", function () {
-      I18N.setLang(langSel.value);
-      document.title = t("app.name");
-      render(input.value);
-      document.dispatchEvent(new Event("langchange"));
+  var langBtn = document.getElementById("langBtn");
+  var langDlg = document.getElementById("lang-dialog");
+  function syncLangUI() {
+    if (langBtn) langBtn.textContent = (I18N.names && I18N.names[I18N.lang()]) || "English";
+    var list = document.getElementById("langlist");
+    if (list) {
+      Array.prototype.forEach.call(list.children, function (b) {
+        var on = b.getAttribute("data-lang") === I18N.lang();
+        b.classList.toggle("on", on);
+        b.setAttribute("aria-current", on ? "true" : "false");
+      });
+    }
+  }
+  if (langBtn && langDlg) {
+    langBtn.addEventListener("click", function () {
+      syncLangUI();
+      langDlg.hidden = false;
     });
+    langDlg.addEventListener("click", function (ev) {
+      if (ev.target === langDlg) { langDlg.hidden = true; return; }
+      var lb = ev.target.closest("[data-lang]");
+      if (!lb) return;
+      var l = lb.getAttribute("data-lang");
+      if (l && l !== I18N.lang()) {
+        I18N.setLang(l);
+        document.title = t("app.name");
+        render(input.value);
+        document.dispatchEvent(new Event("langchange"));
+      }
+      syncLangUI();
+      langDlg.hidden = true;
+    });
+    syncLangUI();
   }
 
   countEl.textContent = t("foot.count", { n: ZV.length.toLocaleString() });
