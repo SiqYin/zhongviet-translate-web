@@ -63,8 +63,7 @@
 
   function promptFor(text) {
     if (st.dir === "zh2vi") {
-      var src = st.script === "hant" ? "繁体中文" : "简体中文";
-      return "请将以下" + src + "文本翻译为越南语，输出地道自然的越南语表达，直接输出翻译结果，不要进行任何解释。\n\n" + text;
+      return "请将以下中文文本翻译为越南语，输出地道自然的越南语表达，直接输出翻译结果，不要进行任何解释。\n\n" + text;
     }
     var tgt = st.script === "hant"
       ? "繁體中文（必须全部使用繁體字，不要出现简体字）"
@@ -106,72 +105,91 @@
     return out;
   }
 
-  // ================= 越南語分詞：按音節合併成詞 =================
+  // ================= 越南語分詞：詞典加權 DP =================
   var SEP = /[^0-9a-zàáảãạăằắẳẵặâầấẩẫậđèéẻẽẹêềếểễệìíỉĩịòóỏõọôồốổỗộơờớởỡợùúủũụưừứửữựỳýỷỹỵ]+/;
-  var _phrases = null;
+  var _vlex = null;
 
-  function viPhrases() {
-    if (_phrases) return _phrases;
-    var set = _phrases = new Set();
+  // 詞庫：NOMDATA 詞頭權重 3，詞典義項短語權重 1，常用單音節虛詞權重 2
+  function viLexicon() {
+    if (_vlex) return _vlex;
+    var m = new Map();
+    function add(key, w) {
+      var cur = m.get(key);
+      if (cur === undefined || w > cur) m.set(key, w);
+    }
+    for (var k = 0; k < NOMDATA.length; k++) {
+      var key = String(NOMDATA[k][0] || "").toLowerCase().trim().replace(/\s+/g, " ");
+      if (!key) continue;
+      var sy = key.split(" ");
+      if (sy.length >= 1 && sy.length <= 6) add(sy.join(" "), 3);
+    }
     for (var i = 0; i < ZV.length; i++) {
-      var s = ZV[i][3];
-      if (!s) continue;
-      var parts = s.split(/[；;，,、\/]/);
+      var sd = ZV[i][3];
+      if (!sd) continue;
+      var parts = sd.split(/[；;，,、\/]/);
       for (var j = 0; j < parts.length; j++) {
         var seg = parts[j].replace(/[（(][^）)]*[）)]/g, " ").trim().toLowerCase();
         if (!seg) continue;
-        var sy = seg.split(SEP).filter(Boolean);
-        if (sy.length < 2 || sy.length > 4) continue;
-        set.add(sy.join(" "));
+        var sy2 = seg.split(SEP).filter(Boolean);
+        if (sy2.length < 2 || sy2.length > 5) continue;
+        add(sy2.join(" "), 1);
       }
     }
-    for (var k = 0; k < NOMDATA.length; k++) {
-      var key = String(NOMDATA[k][0] || "").toLowerCase().trim();
-      if (key) set.add(key);
-    }
-    return set;
+    var singles = ("và của cho với là có không những được người một hai ba bốn năm sáu bảy tám chín mười " +
+      "đi ăn nói làm rất đã sẽ đang này đó kia nào gì ai sao khi nếu thì mà để bị bởi tại từ về đến ở " +
+      "ra vào lên xuống rồi cũng chỉ còn nữa vẫn đều luôn thật quá hơi lắm nhé ạ các một nhiều ít").split(" ");
+    for (var q = 0; q < singles.length; q++) add(singles[q], 2);
+    _vlex = m;
+    return m;
   }
+  function viPhrases() { return viLexicon(); }
 
+  // 以音節為單位做 DP：最大化「詞權重 × 詞長」，未成詞音節記 -1
   function segVi(text) {
-    var set = viPhrases();
-    var parts = text.match(/\s*\S+/g) || [];
-    var out = [], i = 0;
+    var lex = viLexicon();
+    var re = /[\p{L}\p{N}]+/gu, toks = [], last = 0, mm;
+    while ((mm = re.exec(text))) {
+      toks.push({ gap: text.slice(last, mm.index), word: mm[0], low: mm[0].toLowerCase() });
+      last = mm.index + mm[0].length;
+    }
+    var tail = text.slice(last), n = toks.length;
+    if (!n) return [{ lead: "", t: text, w: false }];
 
-    while (i < parts.length) {
-      var best = null, take = 1, tail = "";
-      for (var L = 4; L >= 2; L--) {
-        if (i + L > parts.length) continue;
-        var segs = parts.slice(i, i + L);
-        var lm = /^(\s*)([\p{L}\p{N}]+)([^\p{L}\p{N}]*)$/u.exec(segs[L - 1]);
-        if (!lm) continue;
-        var cand = segs.slice(0, L - 1).join("") + lm[1] + lm[2];
-        if (set.has(cand.trim().toLowerCase())) {
-          best = cand; take = L; tail = lm[3];
-          break;
+    var best = new Array(n + 1);
+    best[n] = { score: 0, len: 0 };
+    for (var i = n - 1; i >= 0; i--) {
+      var cand = { score: -1 + best[i + 1].score, len: 1 };
+      var maxL = Math.min(6, n - i);
+      for (var L = 2; L <= maxL; L++) {
+        var key = toks[i].low;
+        for (var x = 1; x < L; x++) key += " " + toks[i + x].low;
+        var wgt = lex.get(key);
+        if (wgt) {
+          var sc = wgt * L + best[i + L].score;
+          if (sc > cand.score + 1e-9 || (Math.abs(sc - cand.score) <= 1e-9 && L > cand.len)) {
+            cand = { score: sc, len: L };
+          }
         }
       }
-      if (best) {
-        var bm = /^(\s*)([\s\S]*)$/.exec(best);
-        out.push({ lead: bm[1], t: bm[2], w: true });
-        if (tail) out.push({ lead: "", t: tail, w: false });
-        i += take;
-        continue;
-      }
-
-      var p = parts[i];
-      var mm = /^(\s*)([^\p{L}\p{N}]*)([\p{L}\p{N}]+)([^\p{L}\p{N}]*)$/u.exec(p);
-      if (mm) {
-        var lead = mm[1] + mm[2];
-        if (lead) out.push({ lead: "", t: lead, w: false });
-        out.push({ lead: "", t: mm[3], w: true });
-        if (mm[4]) out.push({ lead: "", t: mm[4], w: false });
-      } else {
-        out.push({ lead: "", t: p, w: false });
-      }
-      i++;
+      best[i] = cand;
     }
+
+    var out = [], i2 = 0;
+    while (i2 < n) {
+      var L2 = best[i2].len;
+      var surface = toks[i2].word;
+      var lookup = toks[i2].word;
+      for (var y = 1; y < L2; y++) {
+        surface += toks[i2 + y].gap + toks[i2 + y].word;
+        lookup += " " + toks[i2 + y].word;
+      }
+      out.push({ lead: toks[i2].gap, t: surface, lookup: lookup, w: true });
+      i2 += L2;
+    }
+    if (tail) out.push({ lead: "", t: tail, w: false });
     return out;
   }
+  HV.segVi = segVi;
 
   // ================= 越南語 → 中文 反查索引 =================
   var viIdx = new Map(), viPos = 0, viBuilding = false, viBuilt = false;
@@ -351,13 +369,13 @@
     st.lang = lang;
     outLabel.textContent = lang === "vi" ? t("ai.out.vi") : (st.script === "hant" ? t("ai.out.zhhant") : t("ai.out.zh"));
     outMeta.textContent = meta || "";
-    tokensEl.className = "tokline" + (lang === "vi" ? " vi" : "");
+    tokensEl.className = "tokline " + (lang === "vi" ? "vi" : "zh");
     var toks = lang === "vi" ? segVi(text) : segZh(text);
     var html = [];
     for (var i = 0; i < toks.length; i++) {
       var tk = toks[i];
       var lead = tk.lead ? esc(tk.lead) : "";
-      if (tk.w) html.push(lead + '<span class="tok" data-t="' + esc(tk.t) + '">' + esc(tk.t) + "</span>");
+      if (tk.w) html.push(lead + '<span class="tok" data-t="' + esc(tk.lookup || tk.t) + '">' + esc(tk.t) + "</span>");
       else html.push(lead + '<span class="glue">' + esc(tk.t) + "</span>");
     }
     tokensEl.innerHTML = html.join("");
@@ -471,6 +489,8 @@
   function refreshDir() {
     dirHint.textContent = dirLabel();
     src.placeholder = placeholder();
+    src.classList.toggle("vi", st.dir === "vi2zh");
+    scriptSeg.hidden = st.dir !== "vi2zh";
     lastSample = "";
   }
 

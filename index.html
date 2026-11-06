@@ -1,11 +1,21 @@
 <!DOCTYPE html>
-<html lang="zh-Hant">
+<html lang="zh-Hant" data-theme="light">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#faf7f2">
 <title>漢南辭典</title>
 <link rel="icon" href="favicon.ico" sizes="any">
+<script>
+(function () {
+  try {
+    var p = localStorage.getItem("hanviet.ui.theme") || "auto";
+    var dark = p === "dark" || (p === "auto" && window.matchMedia &&
+      window.matchMedia("(prefers-color-scheme: dark)").matches);
+    document.documentElement.setAttribute("data-theme", dark ? "dark" : "light");
+  } catch (e) {}
+})();
+</script>
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -16,6 +26,11 @@
       <p class="sub" data-i18n="app.sub">漢語 · 越南語 · 字喃</p>
     </div>
     <div class="topright">
+      <button id="themeBtn" class="iconbtn" type="button" data-i18n-aria="theme.label" aria-label="外观">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+          <circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2.2M12 19.3v2.2M2.5 12h2.2M19.3 12h2.2M5.2 5.2l1.6 1.6M17.2 17.2l1.6 1.6M18.8 5.2l-1.6 1.6M6.8 17.2l-1.6 1.6"/>
+        </svg>
+      </button>
       <button id="langBtn" class="langsel" type="button" aria-label="Interface language">繁體中文</button>
       <nav class="tabs" id="tabs" role="tablist">
         <button class="tab on" data-view="dict" role="tab" data-i18n="nav.dict">查詞</button>
@@ -124,6 +139,17 @@
     <div class="upd-btns">
       <button id="upd-later" class="btn-ghost" data-i18n="update.later">暂不下载</button>
       <button id="upd-go" class="btn-primary" data-i18n="update.download">前往下载</button>
+    </div>
+  </div>
+</div>
+
+<div id="theme-dialog" class="upd" hidden>
+  <div class="upd-card" role="dialog" aria-modal="true">
+    <div class="upd-title" data-i18n="theme.label">外觀</div>
+    <div class="langlist" id="themelist">
+      <button type="button" data-theme-opt="light" data-i18n="theme.light">淺色</button>
+      <button type="button" data-theme-opt="dark" data-i18n="theme.dark">深色</button>
+      <button type="button" data-theme-opt="auto" data-i18n="theme.auto">跟隨系統</button>
     </div>
   </div>
 </div>

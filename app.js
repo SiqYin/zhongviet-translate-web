@@ -321,6 +321,8 @@
       return;
     }
     var isCJK = /[\u3400-\u4dbf\u4e00-\u9fff]/.test(q);
+    input.classList.toggle("zh", isCJK);
+    input.classList.toggle("vi", !isCJK);
     var html = "", n = 0;
 
     if (isCJK) {
@@ -438,6 +440,53 @@
     syncLangUI();
   }
 
+  // ---------- 外觀主題 ----------
+  var THEME_KEY = "hanviet.ui.theme";
+  var themeBtn = document.getElementById("themeBtn");
+  var themeDlg = document.getElementById("theme-dialog");
+  var mqDark = window.matchMedia ? window.matchMedia("(prefers-color-scheme: dark)") : null;
+
+  function themePref() {
+    try { return localStorage.getItem(THEME_KEY) || "auto"; } catch (e) { return "auto"; }
+  }
+
+  function applyTheme() {
+    var pref = themePref();
+    var dark = pref === "dark" || (pref === "auto" && mqDark && mqDark.matches);
+    document.documentElement.setAttribute("data-theme", dark ? "dark" : "light");
+    var meta = document.querySelector('meta[name="theme-color"]');
+    if (meta) meta.setAttribute("content", dark ? "#131116" : "#f7f4ee");
+    var list = document.getElementById("themelist");
+    if (list) {
+      Array.prototype.forEach.call(list.children, function (b) {
+        var on = b.getAttribute("data-theme-opt") === pref;
+        b.classList.toggle("on", on);
+        b.setAttribute("aria-current", on ? "true" : "false");
+      });
+    }
+  }
+
+  if (themeBtn && themeDlg) {
+    themeBtn.addEventListener("click", function () {
+      applyTheme();
+      themeDlg.hidden = false;
+    });
+    themeDlg.addEventListener("click", function (ev) {
+      if (ev.target === themeDlg) { themeDlg.hidden = true; return; }
+      var tb = ev.target.closest("[data-theme-opt]");
+      if (!tb) return;
+      try { localStorage.setItem(THEME_KEY, tb.getAttribute("data-theme-opt")); } catch (e) {}
+      applyTheme();
+      themeDlg.hidden = true;
+    });
+    applyTheme();
+  }
+  if (mqDark) {
+    var onSys = function () { if (themePref() === "auto") applyTheme(); };
+    if (mqDark.addEventListener) mqDark.addEventListener("change", onSys);
+    else if (mqDark.addListener) mqDark.addListener(onSys);
+  }
+
   countEl.textContent = t("foot.count", { n: ZV.length.toLocaleString() });
 
   var pre = new URLSearchParams(location.search).get("q");
@@ -448,7 +497,7 @@
   }
 
   // ---------- 更新檢測 ----------
-  var APP_VERSION = "1.4.1";
+  var APP_VERSION = "1.5.0";
   var UPD_DISMISS = "hanviet.update.dismissed";
 
   function verNum(s) {
