@@ -450,10 +450,18 @@
     try { return localStorage.getItem(THEME_KEY) || "auto"; } catch (e) { return "auto"; }
   }
 
+  function syncThemeBtn() {
+    if (!themeBtn) return;
+    var pref = themePref();
+    themeBtn.setAttribute("data-mode", pref);
+    themeBtn.title = t("theme." + pref);
+  }
+
   function applyTheme() {
     var pref = themePref();
     var dark = pref === "dark" || (pref === "auto" && mqDark && mqDark.matches);
     document.documentElement.setAttribute("data-theme", dark ? "dark" : "light");
+    syncThemeBtn();
     var meta = document.querySelector('meta[name="theme-color"]');
     if (meta) meta.setAttribute("content", dark ? "#131116" : "#f7f4ee");
     var list = document.getElementById("themelist");
@@ -466,8 +474,37 @@
     }
   }
 
+  var THEME_CYCLE = ["light", "dark", "auto"];
+  function cycleTheme() {
+    var cur = themePref();
+    var idx = THEME_CYCLE.indexOf(cur);
+    var next = THEME_CYCLE[(idx + 1) % THEME_CYCLE.length];
+    try { localStorage.setItem(THEME_KEY, next); } catch (e) {}
+    applyTheme();
+  }
+
   if (themeBtn && themeDlg) {
+    var pressTimer = null, longPressed = false;
+    function cancelPress() { clearTimeout(pressTimer); pressTimer = null; }
+    themeBtn.addEventListener("pointerdown", function (ev) {
+      if (ev.pointerType === "mouse" && ev.button !== 0) return;
+      longPressed = false;
+      cancelPress();
+      pressTimer = setTimeout(function () {
+        longPressed = true;
+        applyTheme();
+        themeDlg.hidden = false;
+      }, 550);
+    });
+    themeBtn.addEventListener("pointerup", cancelPress);
+    themeBtn.addEventListener("pointerleave", cancelPress);
+    themeBtn.addEventListener("pointercancel", function () { longPressed = false; cancelPress(); });
     themeBtn.addEventListener("click", function () {
+      if (longPressed) { longPressed = false; return; }
+      cycleTheme();
+    });
+    themeBtn.addEventListener("contextmenu", function (ev) {
+      ev.preventDefault();
       applyTheme();
       themeDlg.hidden = false;
     });
@@ -480,6 +517,7 @@
       themeDlg.hidden = true;
     });
     applyTheme();
+    document.addEventListener("langchange", function () { applyTheme(); });
   }
   if (mqDark) {
     var onSys = function () { if (themePref() === "auto") applyTheme(); };
@@ -497,7 +535,7 @@
   }
 
   // ---------- 更新檢測 ----------
-  var APP_VERSION = "1.5.0";
+  var APP_VERSION = "1.5.1";
   var UPD_DISMISS = "hanviet.update.dismissed";
 
   function verNum(s) {

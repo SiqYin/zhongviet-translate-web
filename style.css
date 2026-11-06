@@ -439,6 +439,11 @@ html[data-theme="dark"] .card:hover{box-shadow:0 6px 18px rgba(0,0,0,.4)}
 }
 .iconbtn:hover{color:var(--accent);border-color:var(--accent)}
 .iconbtn:active{transform:scale(.94)}
+#themeBtn{touch-action:manipulation;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
+#themeBtn .ic{display:none}
+#themeBtn[data-mode="light"] .ic-sun{display:block}
+#themeBtn[data-mode="dark"] .ic-moon{display:block}
+#themeBtn[data-mode="auto"] .ic-auto{display:block}
 .langsel{
   border:1px solid var(--line);background:var(--card);color:var(--muted);
   border-radius:999px;font-size:11px;padding:5px 10px;cursor:pointer;max-width:104px;
