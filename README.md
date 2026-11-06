@@ -1,6 +1,6 @@
 # 漢南辭典 · 網頁版
 
-<p align="center"><img src="logo.png" width="112" alt="漢南辭典"></p>
+<p align="center"><img src="logo.png" width="200" alt="漢南辭典"></p>
 
 **Từ điển Trung–Việt** · **Sino-Vietnamese Dictionary**
 

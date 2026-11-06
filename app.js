@@ -344,6 +344,9 @@
     var html = '<div class="det-hz">' + esc(e[1]) + "</div>" +
       '<div class="det-vi">' + esc(firstSense(e)) + nomTag(e[5], "nom-md") + "</div>" +
       '<div class="det-senses">' + esc(e[3]) + "</div>" +
+      (e[6] ? '<div class="det-ex"><div class="det-ex-h">' + t("detail.example") + "</div>" +
+        '<div class="det-ex-zh">' + esc(e[6][0]) + "</div>" +
+        '<div class="det-ex-vi">' + esc(e[6][1]) + "</div></div>" : "") +
       '<dl class="defs">' +
       '<div class="def"><dt>' + t("detail.pinyin") + '</dt><dd>' + esc(e[2]) + "</dd></div>" +
       (e[0] !== e[1] ? '<div class="def"><dt>' + t("detail.trad") + '</dt><dd>' + esc(e[0]) + "</dd></div>" : "") +
@@ -419,4 +422,53 @@
     clearBtn.hidden = false;
     render(pre);
   }
+
+  // ---------- 更新檢測 ----------
+  var APP_VERSION = "1.4.0";
+  var UPD_DISMISS = "hanviet.update.dismissed";
+
+  function verNum(s) {
+    var m = String(s || "").match(/(\d+)\.(\d+)\.(\d+)/);
+    return m ? [+m[1], +m[2], +m[3]] : null;
+  }
+  function verNewer(a, b) {
+    for (var i = 0; i < 3; i++) {
+      if ((a[i] || 0) !== (b[i] || 0)) return (a[i] || 0) > (b[i] || 0);
+    }
+    return false;
+  }
+
+  function showUpdateDialog(tag, url) {
+    var box = document.getElementById("update-dialog");
+    if (!box) return;
+    var msgEl = document.getElementById("upd-msg");
+    msgEl.textContent = t("update.msg", { v: tag });
+    box.hidden = false;
+    document.getElementById("upd-go").onclick = function () {
+      window.open(url, "_blank");
+      box.hidden = true;
+    };
+    document.getElementById("upd-later").onclick = function () {
+      try { localStorage.setItem(UPD_DISMISS, tag); } catch (e) {}
+      box.hidden = true;
+    };
+    document.addEventListener("langchange", function () {
+      if (!box.hidden) msgEl.textContent = t("update.msg", { v: tag });
+    });
+  }
+
+  function checkUpdate() {
+    fetch("https://api.github.com/repos/SiqYin/zhongviet-translate/releases/latest")
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (d) {
+        if (!d || !d.tag_name) return;
+        var tag = d.tag_name.replace(/^v/i, "");
+        var cur = verNum(APP_VERSION), lat = verNum(tag);
+        if (!cur || !lat || !verNewer(lat, cur)) return;
+        try { if (localStorage.getItem(UPD_DISMISS) === d.tag_name) return; } catch (e) {}
+        showUpdateDialog(d.tag_name, d.html_url);
+      })
+      .catch(function () {});   // 離線或接口失敗：靜默
+  }
+  setTimeout(checkUpdate, 1200);
 })();
