@@ -24,6 +24,36 @@
     return (s || "").toLowerCase().split(SPLIT).filter(Boolean);
   }
 
+  // ---------- 越南語去聲調（1:1 字符映射，便於對齊原串） ----------
+  var DEACC = (function () {
+    var pairs = {
+      a: "àáảãạăằắẳẵặâầấẩẫậ",
+      e: "èéẻẽẹêềếểễệ",
+      i: "ìíỉĩị",
+      o: "òóỏõọôồốổỗộơờớởỡợ",
+      u: "ùúủũụưừứửữự",
+      y: "ỳýỷỹỵ",
+      d: "đ"
+    };
+    var m = {};
+    for (var base in pairs) {
+      var str = pairs[base];
+      for (var i = 0; i < str.length; i++) m[str.charAt(i)] = base;
+    }
+    return m;
+  })();
+
+  function deacc(s) {
+    var str = String(s || "");
+    if (str.normalize) str = str.normalize("NFC");
+    var out = "";
+    for (var i = 0; i < str.length; i++) {
+      var c = str.charAt(i);
+      out += DEACC[c] || c;
+    }
+    return out;
+  }
+
 
   // ---------- 拼音 -> 注音 ----------
   var ZY_INIT = [["zh","ㄓ"],["ch","ㄔ"],["sh","ㄕ"],["b","ㄅ"],["p","ㄆ"],["m","ㄇ"],["f","ㄈ"],
@@ -102,10 +132,95 @@
     return { exact: exact, rest: rest.slice(0, MAX) };
   }
 
+  // ---------- 越南語免聲調查詢：按可能對應的音節分組 ----------
+  var SNORM = null;
+
+  function buildNormIndex() {
+    if (SNORM) return;
+    var arr = new Array(ZV.length);
+    for (var i = 0; i < ZV.length; i++) {
+      var e = ZV[i];
+      var ss = (e[3] || "").split("；");
+      var norms = new Array(ss.length);
+      for (var j = 0; j < ss.length; j++) {
+        norms[j] = deacc(ss[j].toLowerCase().replace(/[（(][^）)]*[）)]/g, " ")
+          .replace(/[.,;:!?"'”’\]]+$/, "").trim());
+      }
+      arr[i] = norms;
+    }
+    SNORM = arr;
+  }
+
+  function senseRaw(i, j) {
+    var ss = ZV[i][3].split("；");
+    return (ss[j] || "").toLowerCase().replace(/[（(][^）)]*[）)]/g, " ")
+      .replace(/[.,;:!?"'”’\]]+$/, "").trim();
+  }
+
+  function searchViVariants(key) {
+    buildNormIndex();
+    var groups = new Map();
+    for (var i = 0; i < ZV.length; i++) {
+      var e = ZV[i];
+      if (e[1].length > 8) continue;
+      var norms = SNORM[i];
+      if (!norms) continue;
+      for (var j = 0; j < norms.length; j++) {
+        var ns = norms[j];
+        if (!ns) continue;
+        var idx = ns.indexOf(key);
+        if (idx < 0) continue;
+        var raw = senseRaw(i, j);
+        var surface = raw.substr(idx, key.length);
+        if (!surface) continue;
+        var g = groups.get(surface);
+        if (!g) { g = { surface: surface, rows: [], seen: {}, best: 9 }; groups.set(surface, g); }
+        if (g.seen[i]) continue;
+        g.seen[i] = 1;
+        var sc = idx === 0 ? (ns.length === key.length ? 0 : 1) : 2;
+        if (sc < g.best) g.best = sc;
+        g.rows.push([sc, i]);
+      }
+    }
+    function rowScore(i, surface) {
+      var e = ZV[i];
+      var f = (senses(e)[0] || "").toLowerCase().replace(/[（(][^）)]*[）)]/g, " ").trim();
+      var startPen = f.indexOf(surface) === 0 ? 0 : 10;
+      var L = e[1].length;
+      var lw = L === 2 ? 0 : L === 3 ? 1 : L === 1 ? 4 : 2;
+      return startPen + lw;
+    }
+
+    var out = [];
+    groups.forEach(function (g) {
+      g.rows.sort(function (a, b) {
+        return a[0] - b[0] || rowScore(a[1], g.surface) - rowScore(b[1], g.surface) ||
+          ZV[a[1]][1].length - ZV[b[1]][1].length;
+      });
+      out.push({
+        surface: g.surface,
+        rows: g.rows.map(function (x) { return x[1]; }),
+        total: g.rows.length,
+        best: g.best
+      });
+    });
+    out.sort(function (a, b) {
+      return a.best - b.best || b.total - a.total ||
+        a.surface.length - b.surface.length ||
+        (a.surface < b.surface ? -1 : a.surface > b.surface ? 1 : 0);
+    });
+    return out.slice(0, 8);
+  }
+
   // ---------- 越 -> 中：把該詞當作義項的中文詞（精確／開頭／包含三組） ----------
   function searchVi(q) {
     var key = q.toLowerCase().trim();
     if (!key) return { exact: [], starts: [], contains: [], key: "" };
+    var normKey = deacc(key);
+    if (normKey === key && /[a-z]/.test(key)) {
+      var vg = searchViVariants(normKey);
+      if (vg.length) return { variants: vg, key: key, exact: [], starts: [], contains: [] };
+    }
     var isPhrase = tokens(key).length > 1;
     var exact = [], starts = [], contains = [];
     for (var i = 0; i < ZV.length; i++) {
@@ -283,7 +398,26 @@
   // 越南語查詢：以越南語詞為入口，列出對應的中文詞
   function viHero(q) {
     var r = searchVi(q);
-    if (!r.exact.length && !r.starts.length && !r.contains.length) return "";
+    if (r.variants && r.variants.length) {
+      var vh = '<article class="hero vihero">' +
+        '<div class="hero-head"><div class="hz vi-big">' + esc(q.trim()) + "</div></div>";
+      r.variants.forEach(function (g) {
+        vh += '<div class="fam"><div class="fam-title var-title">' +
+          '<span class="vt">' + esc(g.surface) + "</span>" +
+          '<span class="vn">' + esc(t("vi.hero.label")) + " · " + g.total + "</span></div>";
+        g.rows.slice(0, 8).forEach(function (i) {
+          var e = ZV[i];
+          vh += '<div class="fam-row" data-i="' + i + '" data-kind="zv">' +
+            '<span class="fz">' + esc(e[1]) + "</span>" +
+            '<span class="fv">' + esc(e[2]) + "</span>" +
+            "</div>";
+        });
+        vh += "</div>";
+      });
+      var vtotal = r.variants.reduce(function (a, g) { return a + g.total; }, 0);
+      return { html: vh + "</article>", count: vtotal };
+    }
+    if (!r.exact.length && !r.starts.length && !r.contains.length) return null;
     var nom = NOM.get(r.key) || "";
     var html = '<article class="hero vihero">' +
       '<div class="hero-head">' +
@@ -310,7 +444,7 @@
     if (r.contains.length) {
       html += '<div class="fam"><div class="fam-title">' + esc(t("fam.contains", { w: r.key })) + "</div>" + rows(r.contains, 16) + "</div>";
     }
-    return html + "</article>";
+    return { html: html + "</article>", count: r.exact.length + r.starts.length + r.contains.length };
   }
 
   function render(q) {
@@ -331,7 +465,7 @@
       r.rest.forEach(function (i) { html += compactCard(i); n++; });
     } else {
       var h = viHero(q);
-      if (h) { html += h; n = 1; }
+      if (h && h.html) { html += h.html; n = h.count || 1; }
     }
 
     resultsEl.innerHTML = html;
@@ -535,7 +669,7 @@
   }
 
   // ---------- 更新檢測 ----------
-  var APP_VERSION = "1.5.1";
+  var APP_VERSION = "1.5.2";
   var UPD_DISMISS = "hanviet.update.dismissed";
 
   function verNum(s) {
@@ -582,4 +716,7 @@
       .catch(function () {});   // 離線或接口失敗：靜默
   }
   setTimeout(checkUpdate, 1200);
+
+  // 空閒時預建越南語去聲調索引，首次免聲調查詢不必等待
+  setTimeout(function () { try { buildNormIndex(); } catch (e) {} }, 1600);
 })();

@@ -245,6 +245,9 @@ html[data-theme="dark"] .card:hover{box-shadow:0 6px 18px rgba(0,0,0,.4)}
 .senses{font-size:12px;color:var(--vi-2);line-height:1.6;margin-top:8px;overflow-wrap:anywhere}
 .fam{margin-top:14px;border-top:1px solid var(--line);padding-top:10px}
 .fam-title{font-size:11px;color:var(--muted);letter-spacing:.1em;margin-bottom:6px}
+.fam-title.var-title{display:flex;align-items:baseline;gap:8px;letter-spacing:.02em}
+.fam-title .vt{font-family:var(--kai);font-size:15px;font-weight:700;color:var(--vi)}
+.fam-title .vn{font-size:10.5px;color:var(--muted);letter-spacing:.04em}
 .fam-row{display:flex;align-items:center;gap:10px;padding:7px 6px;border-radius:10px;cursor:pointer;
   transition:background-color .15s}
 .fam-row:hover{background:var(--card-2)}
