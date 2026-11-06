@@ -336,3 +336,6 @@ main{max-width:720px;margin:0 auto;padding:10px 16px 0}
 }
 .langsel:focus{outline:none;border-color:#c9b79a}
 @media(max-width:420px){ .langsel{max-width:88px;font-size:10px;padding:3px 4px} .brand h1{font-size:17px} }
+
+/* ---------- 字喃一律用字喃字體 ---------- */
+.nomword{font-family:var(--nom)}

@@ -1,5 +1,7 @@
 # 漢南辭典 · 網頁版
 
+<p align="center"><img src="logo.png" width="112" alt="漢南辭典"></p>
+
 **Từ điển Trung–Việt** · **Sino-Vietnamese Dictionary**
 
 [中文](https://github.com/SiqYin/zhongviet-translate#readme) · [Tiếng Việt](https://github.com/SiqYin/zhongviet-translate/blob/main/README.vi.md) · [English](https://github.com/SiqYin/zhongviet-translate/blob/main/README.en.md)

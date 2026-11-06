@@ -102,42 +102,64 @@
     return { exact: exact, rest: rest.slice(0, MAX) };
   }
 
-  // ---------- 越 -> 中：找出把這個詞當作義項的中文詞 ----------
+  // ---------- 越 -> 中：把該詞當作義項的中文詞（精確／開頭／包含三組） ----------
   function searchVi(q) {
     var key = q.toLowerCase().trim();
-    if (!key) return [];
-    var keyTokens = tokens(key);
-    var isPhrase = keyTokens.length > 1;
-    var hits = [];
+    if (!key) return { exact: [], starts: [], contains: [], key: "" };
+    var isPhrase = tokens(key).length > 1;
+    var exact = [], starts = [], contains = [];
     for (var i = 0; i < ZV.length; i++) {
       var e = ZV[i];
       if (e[1].length > 8) continue;
-      var ss = senses(e);
+      var ss = senses(e), lv = 9, lvLen = 99, lvRaw = "";
       for (var j = 0; j < ss.length; j++) {
-        var tk = tokens(ss[j]);
-        if (isPhrase) {
-          if (ss[j].toLowerCase().indexOf(key) > -1) { hits.push([j, i]); break; }
-        } else if (tk.indexOf(key) > -1) {
-          hits.push([j, i]); break;
+        var raw = ss[j].toLowerCase().replace(/[（(][^）)]*[）)]/g, " ")
+          .replace(/[.,;:!?"'”’\]]+$/, "").trim();
+        if (!raw) continue;
+        var sc = 9;
+        if (raw === key) sc = 0;
+        else if (raw.indexOf(key) === 0) sc = 1;
+        else if (isPhrase ? raw.indexOf(key) > -1 : tokens(raw).indexOf(key) > -1) sc = 2;
+        else if (raw.indexOf(key) > -1) sc = 3;
+        var wc = raw.split(/\s+/).length;
+        if (sc < lv || (sc === lv && wc < lvLen)) {
+          lv = sc; lvLen = wc; lvRaw = raw;
+          if (lv === 0 && j === 0) break;
         }
       }
-      if (hits.length > 800) break;
+      if (lv === 0) exact.push([i, lvLen, lvRaw]);
+      else if (lv === 1) starts.push([i, lvLen, lvRaw]);
+      else if (lv < 9) contains.push([i, lvLen, lvRaw]);
     }
-    hits.sort(function (a, b) { return viScore(a[1], key) - viScore(b[1], key); });
-    return hits.slice(0, MAX).map(function (h) { return h[1]; });
+    // 排序：詞庫成詞（nhà nước）> 短語，命中義項越短越靠前，再看首義項與詞頭長度
+    function ord(h) {
+      var i = h[0], e = ZV[i], L = e[1].length;
+      var lw = (L === 2 ? 0 : L === 1 ? 1 : L === 3 ? 2 : 3);
+      var f = (senses(e)[0] || "").toLowerCase().replace(/[（(][^）)]*[）)]/g, " ").trim();
+      var fPen = (f === key || f.indexOf(key) === 0) ? 0 : 1;
+      var lexPen = NOM.has((h[2] || "").toLowerCase()) ? 0 : 1;
+      return fPen * 100 + lexPen * 30 + h[1] * 4 + lw;
+    }
+    exact.sort(function (a, b) { return ord(a) - ord(b); });
+    starts.sort(function (a, b) { return ord(a) - ord(b); });
+    contains.sort(function (a, b) { return ord(a) - ord(b); });
+    return {
+      exact: exact.map(function (h) { return h[0]; }),
+      starts: starts.map(function (h) { return h[0]; }),
+      contains: contains.map(function (h) { return h[0]; }),
+      key: key
+    };
   }
 
-  // 以越南語詞為核心的相關詞（中越對照）
   function viScore(i, key) {
     var e = ZV[i], ss = senses(e), best = 9;
     for (var j = 0; j < ss.length; j++) {
-      var t = ss[j].toLowerCase().trim();
-      if (t === key) { best = 0; break; }
-      if (t.indexOf(key) === 0) best = Math.min(best, 1);
-      else if (tokens(t).indexOf(key) > -1) best = Math.min(best, 2);
+      var sv = ss[j].toLowerCase().trim();
+      if (sv === key) { best = 0; break; }
+      if (sv.indexOf(key) === 0) best = Math.min(best, 1);
+      else if (tokens(sv).indexOf(key) > -1) best = Math.min(best, 2);
     }
-    var lenScore = e[1].length === 1 ? 0 : e[1].length === 2 ? 1 : 2;
-    return best * 10 + lenScore;
+    return best * 10 + (e[1].length === 1 ? 0 : e[1].length === 2 ? 1 : 2);
   }
 
   function viFamily(key) {
@@ -163,6 +185,7 @@
   var input = document.getElementById("q");
   var clearBtn = document.getElementById("clear");
 
+  // 字喃一律用字喃字體（漢喃詞如「暫時」「机関」同屬字喃寫法）
   function nomTag(nom, cls) {
     return nom ? '<span class="' + (cls || "nom-sm") + '">' + esc(nom) + "</span>" : "";
   }
@@ -259,25 +282,35 @@
 
   // 越南語查詢：以越南語詞為入口，列出對應的中文詞
   function viHero(q) {
-    var key = q.trim();
-    var list = searchVi(key);
-    if (!list.length) return "";
-    var nom = NOM.get(key.toLowerCase()) || "";
+    var r = searchVi(q);
+    if (!r.exact.length && !r.starts.length && !r.contains.length) return "";
+    var nom = NOM.get(r.key) || "";
     var html = '<article class="hero vihero">' +
       '<div class="hero-head">' +
-        '<div class="hz vi-big">' + esc(key) + "</div>" +
+        '<div class="hz vi-big">' + esc(q.trim()) + "</div>" +
         '<div class="hz-side">' + nomTag(nom, "nom-sm") + "</div>" +
-      "</div>" +
-      '<div class="senses">' + t("vi.hero.label") + "</div>" +
-      '<div class="fam">';
-    list.slice(0, 24).forEach(function (i) {
-      var e = ZV[i];
-      html += '<div class="fam-row" data-i="' + i + '" data-kind="zv">' +
-        '<span class="fz">' + esc(e[1]) + "</span>" +
-        '<span class="fv">' + esc(e[2]) + "</span>" +
-        "</div>";
-    });
-    return html + "</div></article>";
+      "</div>";
+    function rows(list, n) {
+      var out = "";
+      list.slice(0, n).forEach(function (i) {
+        var e = ZV[i];
+        out += '<div class="fam-row" data-i="' + i + '" data-kind="zv">' +
+          '<span class="fz">' + esc(e[1]) + "</span>" +
+          '<span class="fv">' + esc(e[2]) + "</span>" +
+          "</div>";
+      });
+      return out;
+    }
+    if (r.exact.length) {
+      html += '<div class="fam"><div class="fam-title">' + esc(t("vi.hero.label")) + "</div>" + rows(r.exact, 10) + "</div>";
+    }
+    if (r.starts.length) {
+      html += '<div class="fam"><div class="fam-title">' + esc(t("fam.starts", { w: r.key })) + "</div>" + rows(r.starts, 10) + "</div>";
+    }
+    if (r.contains.length) {
+      html += '<div class="fam"><div class="fam-title">' + esc(t("fam.contains", { w: r.key })) + "</div>" + rows(r.contains, 16) + "</div>";
+    }
+    return html + "</article>";
   }
 
   function render(q) {
@@ -285,21 +318,6 @@
     if (!q) {
       resultsEl.innerHTML = "";
       emptyEl.hidden = true;
-      // ---------- 界面語言 ----------
-  I18N.apply();
-  document.title = t("app.name");
-  var langSel = document.getElementById("lang");
-  if (langSel) {
-    langSel.value = I18N.lang();
-    langSel.addEventListener("change", function () {
-      I18N.setLang(langSel.value);
-      document.title = t("app.name");
-      render(input.value);
-      document.dispatchEvent(new Event("langchange"));
-    });
-  }
-
-  countEl.textContent = t("foot.count", { n: ZV.length.toLocaleString() });
       return;
     }
     var isCJK = /[\u3400-\u4dbf\u4e00-\u9fff]/.test(q);
@@ -330,7 +348,7 @@
       '<div class="def"><dt>' + t("detail.pinyin") + '</dt><dd>' + esc(e[2]) + "</dd></div>" +
       (e[0] !== e[1] ? '<div class="def"><dt>' + t("detail.trad") + '</dt><dd>' + esc(e[0]) + "</dd></div>" : "") +
       (e[4] ? '<div class="def"><dt>' + t("detail.hv") + '</dt><dd>' + esc(e[4]) + "</dd></div>" : "") +
-      (e[5] ? '<div class="def"><dt>' + t("detail.nom") + '</dt><dd><span class="ids">' + esc(e[5]) + "</span></dd></div>" : "") +
+      (e[5] ? '<div class="def"><dt>' + t("detail.nom") + '</dt><dd><span class="nomword">' + esc(e[5]) + "</span></dd></div>" : "") +
       "</dl>";
     html += famBlock(fam);
     openSheet(html);
