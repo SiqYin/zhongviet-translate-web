@@ -424,7 +424,7 @@
   }
 
   // ---------- 更新檢測 ----------
-  var APP_VERSION = "1.4.0";
+  var APP_VERSION = "1.4.1";
   var UPD_DISMISS = "hanviet.update.dismissed";
 
   function verNum(s) {
