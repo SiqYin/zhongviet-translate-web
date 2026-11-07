@@ -669,7 +669,7 @@
   }
 
   // ---------- 更新檢測 ----------
-  var APP_VERSION = "1.5.2";
+  var APP_VERSION = "1.5.4";
   var UPD_DISMISS = "hanviet.update.dismissed";
 
   function verNum(s) {

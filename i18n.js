@@ -170,7 +170,7 @@
 "lang.label": "介面語言"
     },
     vi: {
-      "app.name": "Từ điển Trung–Việt",
+      "app.name": "Từ điển Trung-Nam",
       "app.sub": "Trung · Việt · Nôm",
       "nav.dict": "Tra từ",
       "nav.ai": "Dịch",
