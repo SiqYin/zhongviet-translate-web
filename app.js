@@ -63,7 +63,7 @@
     "ang":"ㄤ","eng":"ㄥ","er":"ㄦ","i":"ㄧ","ia":"ㄧㄚ","ie":"ㄧㄝ","iao":"ㄧㄠ","iu":"ㄧㄡ",
     "ian":"ㄧㄢ","in":"ㄧㄣ","iang":"ㄧㄤ","ing":"ㄧㄥ","iong":"ㄩㄥ","u":"ㄨ","ua":"ㄨㄚ","uo":"ㄨㄛ",
     "uai":"ㄨㄞ","ui":"ㄨㄟ","uan":"ㄨㄢ","un":"ㄨㄣ","uang":"ㄨㄤ","ong":"ㄨㄥ","ü":"ㄩ","üe":"ㄩㄝ",
-    "üan":"ㄩㄢ","ün":"ㄩㄣ"};
+    "ue":"ㄩㄝ","üan":"ㄩㄢ","ün":"ㄩㄣ"};
   var ZY_TONE = {1:"",2:"ˊ",3:"ˇ",4:"ˋ",5:"˙"};
   var ZY_MARK = {"ā":"a","á":"a","ǎ":"a","à":"a","ē":"e","é":"e","ě":"e","è":"e","ī":"i","í":"i",
     "ǐ":"i","ì":"i","ō":"o","ó":"o","ǒ":"o","ò":"o","ū":"u","ú":"u","ǔ":"u","ù":"u","ǖ":"ü",
@@ -162,14 +162,24 @@
     var groups = new Map();
     for (var i = 0; i < ZV.length; i++) {
       var e = ZV[i];
-      if (e[1].length > 8) continue;
       var norms = SNORM[i];
       if (!norms) continue;
+      var single = e[1].length === 1;
       for (var j = 0; j < norms.length; j++) {
         var ns = norms[j];
         if (!ns) continue;
         var idx = ns.indexOf(key);
+        while (idx > -1) {
+          // 必須落在音節邊界（「ngà」裡的「ga」不算），結尾也不能切在音節中間
+          var headOk = idx === 0 || ns.charAt(idx - 1) === " ";
+          var endC = ns.charAt(idx + key.length);
+          var tailOk = idx + key.length >= ns.length || !/[a-z]/.test(endC);
+          if (headOk && tailOk) break;
+          idx = ns.indexOf(key, idx + 1);
+        }
         if (idx < 0) continue;
+        // 單字條目只在整個義項等於查詢時才出場，否則都是「拿漢字硬湊」
+        if (single && ns !== key) continue;
         var raw = senseRaw(i, j);
         var surface = raw.substr(idx, key.length);
         if (!surface) continue;
@@ -179,27 +189,29 @@
         g.seen[i] = 1;
         var sc = idx === 0 ? (ns.length === key.length ? 0 : 1) : 2;
         if (sc < g.best) g.best = sc;
-        g.rows.push([sc, i]);
+        g.rows.push([sc, i, raw]);
       }
     }
-    function rowScore(i, surface) {
-      var e = ZV[i];
+    function rowScore(x, surface) {
+      var e = ZV[x[1]];
       var f = (senses(e)[0] || "").toLowerCase().replace(/[（(][^）)]*[）)]/g, " ").trim();
       var startPen = f.indexOf(surface) === 0 ? 0 : 10;
-      var L = e[1].length;
-      var lw = L === 2 ? 0 : L === 3 ? 1 : L === 1 ? 4 : 2;
+      var L = zhLen(e[1]);
+      var lw = L === 2 ? 0 : L === 3 ? 1 : L === 1 ? 8 : 2;
       return startPen + lw;
     }
 
     var out = [];
     groups.forEach(function (g) {
+      var order = (window.VI2ZH && window.VI2ZH[g.surface]) || null;
       g.rows.sort(function (a, b) {
-        return a[0] - b[0] || rowScore(a[1], g.surface) - rowScore(b[1], g.surface) ||
+        return a[0] - b[0] || viRank(a[1], order) - viRank(b[1], order) ||
+          rowScore(a, g.surface) - rowScore(b, g.surface) ||
           ZV[a[1]][1].length - ZV[b[1]][1].length;
       });
       out.push({
         surface: g.surface,
-        rows: g.rows.map(function (x) { return x[1]; }),
+        rows: g.rows,
         total: g.rows.length,
         best: g.best
       });
@@ -212,86 +224,92 @@
     return out.slice(0, 8);
   }
 
-  // ---------- 越 -> 中：把該詞當作義項的中文詞（精確／開頭／包含三組） ----------
+  // ---------- 越 -> 中 ----------
+  // VI2ZH（build_vi2zh.py 產出）：越南語詞 -> 精排後的中文對應詞
+  // 字符長度按碼點算（CJK 擴展區的生僻字是代理對，length 會翻倍）
+  function zhLen(s) {
+    return s.length - (s.match(/[\uD800-\uDBFF]/g) || []).length;
+  }
+
+  function viRank(i, order) {
+    if (!order || !order.length) return 99;
+    var k = order.indexOf(ZV[i][1]);
+    return k < 0 ? 99 : k;
+  }
+
+  // 候選中文詞的啟發式分（越小越好）：義項位置 > 二字詞 > 有字喃/漢越音
+  function zhCandScore(i, j) {
+    var e = ZV[i], L = zhLen(e[1]);
+    var s = (j || 0) * 4;
+    s += L === 2 ? 0 : L === 3 ? 4 : 6;
+    if (e[5]) s -= 1;
+    if (!e[4]) s += 1;
+    return s;
+  }
+
+  // 家族行排序：首義項命中 > 二字詞 > 義項短
+  function viRowScore(i, raw) {
+    var e = ZV[i], L = zhLen(e[1]);
+    var s = L === 2 ? 0 : L === 3 ? 2 : L >= 4 ? 4 : 8;
+    if ((senses(e)[0] || "") === raw) s -= 2;
+    s += Math.min(raw.split(/\s+/).length, 8) * 0.3;
+    return s;
+  }
+
   function searchVi(q) {
-    var key = q.toLowerCase().trim();
-    if (!key) return { exact: [], starts: [], contains: [], key: "" };
+    var key = q.toLowerCase().trim().replace(/\s+/g, " ");
+    if (!key) return { key: "", hero: [], starts: [], contains: [] };
     var normKey = deacc(key);
     if (normKey === key && /[a-z]/.test(key)) {
       var vg = searchViVariants(normKey);
-      if (vg.length) return { variants: vg, key: key, exact: [], starts: [], contains: [] };
+      if (vg.length) return { variants: vg, key: key, hero: [], starts: [], contains: [] };
     }
     var isPhrase = tokens(key).length > 1;
-    var exact = [], starts = [], contains = [];
+    var hero = [], starts = [], contains = [];
+    var heroSeen = {}, startSeen = {};
+    var exactC = [];
     for (var i = 0; i < ZV.length; i++) {
-      var e = ZV[i];
-      if (e[1].length > 8) continue;
-      var ss = senses(e), lv = 9, lvLen = 99, lvRaw = "";
+      var e = ZV[i], L = zhLen(e[1]);
+      var ss = senses(e), bestJ = -1;
       for (var j = 0; j < ss.length; j++) {
-        var raw = ss[j].toLowerCase().replace(/[（(][^）)]*[）)]/g, " ")
-          .replace(/[.,;:!?"'”’\]]+$/, "").trim();
+        var raw = senseRaw(i, j);
         if (!raw) continue;
-        var sc = 9;
-        if (raw === key) sc = 0;
-        else if (raw.indexOf(key) === 0) sc = 1;
-        else if (isPhrase ? raw.indexOf(key) > -1 : tokens(raw).indexOf(key) > -1) sc = 2;
-        else if (raw.indexOf(key) > -1) sc = 3;
-        var wc = raw.split(/\s+/).length;
-        if (sc < lv || (sc === lv && wc < lvLen)) {
-          lv = sc; lvLen = wc; lvRaw = raw;
-          if (lv === 0 && j === 0) break;
+        if (raw === key && (bestJ < 0 || j < bestJ)) bestJ = j;
+        if (L < 2) continue;                    // 單字只進精確對應，不進短語族
+        if (raw.indexOf(key) === 0 && raw.length > key.length) {
+          if (!startSeen[i]) { startSeen[i] = 1; starts.push([i, raw]); }
+        } else if (tokens(raw).indexOf(key) > -1 && !startSeen[i]) {
+          contains.push([i, raw]);
         }
       }
-      if (lv === 0) exact.push([i, lvLen, lvRaw]);
-      else if (lv === 1) starts.push([i, lvLen, lvRaw]);
-      else if (lv < 9) contains.push([i, lvLen, lvRaw]);
+      if (bestJ > -1) exactC.push([i, bestJ]);
     }
-    // 排序：詞庫成詞（nhà nước）> 短語，命中義項越短越靠前，再看首義項與詞頭長度
-    function ord(h) {
-      var i = h[0], e = ZV[i], L = e[1].length;
-      var lw = (L === 2 ? 0 : L === 1 ? 1 : L === 3 ? 2 : 3);
-      var f = (senses(e)[0] || "").toLowerCase().replace(/[（(][^）)]*[）)]/g, " ").trim();
-      var fPen = (f === key || f.indexOf(key) === 0) ? 0 : 1;
-      var lexPen = NOM.has((h[2] || "").toLowerCase()) ? 0 : 1;
-      return fPen * 100 + lexPen * 30 + h[1] * 4 + lw;
-    }
-    exact.sort(function (a, b) { return ord(a) - ord(b); });
-    starts.sort(function (a, b) { return ord(a) - ord(b); });
-    contains.sort(function (a, b) { return ord(a) - ord(b); });
+    // 主對應：VI2ZH 精排在前（回校驗該條確有此義項），其餘按啟發式
+    var order = (window.VI2ZH && window.VI2ZH[key]) || [];
+    var exactSet = {};
+    exactC.forEach(function (x) { exactSet[x[0]] = 1; });
+    order.forEach(function (zh) {
+      var i2 = bySimp.get(zh);
+      if (i2 == null || heroSeen[i2] || !exactSet[i2]) return;
+      heroSeen[i2] = 1; hero.push(i2);
+    });
+    exactC.sort(function (a, b) { return zhCandScore(a[0], a[1]) - zhCandScore(b[0], b[1]); });
+    exactC.sort(function (a, b) {           // 兜底時單字放多字詞後面（AI 精排過的不受影響）
+      var sa = zhLen(ZV[a[0]][1]) === 1 ? 1 : 0, sb = zhLen(ZV[b[0]][1]) === 1 ? 1 : 0;
+      return sa - sb;
+    });
+    exactC.forEach(function (x) {
+      if (!heroSeen[x[0]]) { heroSeen[x[0]] = 1; hero.push(x[0]); }
+    });
+    hero = hero.slice(0, 6);
+    starts.sort(function (a, b) { return viRowScore(a[0], a[1]) - viRowScore(b[0], b[1]); });
+    contains.sort(function (a, b) { return viRowScore(a[0], a[1]) - viRowScore(b[0], b[1]); });
     return {
-      exact: exact.map(function (h) { return h[0]; }),
-      starts: starts.map(function (h) { return h[0]; }),
-      contains: contains.map(function (h) { return h[0]; }),
-      key: key
+      key: key,
+      hero: hero,
+      starts: starts.slice(0, 12),
+      contains: contains.filter(function (x) { return !startSeen[x[0]]; }).slice(0, 12)
     };
-  }
-
-  function viScore(i, key) {
-    var e = ZV[i], ss = senses(e), best = 9;
-    for (var j = 0; j < ss.length; j++) {
-      var sv = ss[j].toLowerCase().trim();
-      if (sv === key) { best = 0; break; }
-      if (sv.indexOf(key) === 0) best = Math.min(best, 1);
-      else if (tokens(sv).indexOf(key) > -1) best = Math.min(best, 2);
-    }
-    return best * 10 + (e[1].length === 1 ? 0 : e[1].length === 2 ? 1 : 2);
-  }
-
-  function viFamily(key) {
-    var k = key.toLowerCase().trim();
-    var out = [];
-    if (!k) return out;
-    var isPhrase = tokens(k).length > 1;
-    for (var i = 0; i < ZV.length && out.length < 20; i++) {
-      var e = ZV[i];
-      if (e[1].length > 6) continue;
-      var ss = senses(e);
-      for (var j = 0; j < ss.length; j++) {
-        var t = ss[j].toLowerCase();
-        if (isPhrase ? t.indexOf(k) > -1 : tokens(t).indexOf(k) > -1) { out.push(i); break; }
-      }
-    }
-    return out;
   }
 
   var resultsEl = document.getElementById("results");
@@ -395,7 +413,17 @@
       "</div></article>";
   }
 
-  // 越南語查詢：以越南語詞為入口，列出對應的中文詞
+  // 越南語查詢：以越南語詞為入口，給出對應中文翻譯與短語族
+  function viHeroRow(i, raw, surface) {
+    var e = ZV[i];
+    var ctx = raw && surface && raw !== surface ? raw : "";
+    return '<div class="fam-row viz" data-i="' + i + '" data-kind="zv">' +
+      (ctx ? '<span class="fv">' + esc(ctx) + "</span>" : "") +
+      '<span class="fz">' + esc(e[1]) + "</span>" +
+      '<span class="fpy">' + esc(e[2]) + "</span>" +
+      "</div>";
+  }
+
   function viHero(q) {
     var r = searchVi(q);
     if (r.variants && r.variants.length) {
@@ -405,55 +433,70 @@
         vh += '<div class="fam"><div class="fam-title var-title">' +
           '<span class="vt">' + esc(g.surface) + "</span>" +
           '<span class="vn">' + esc(t("vi.hero.label")) + " · " + g.total + "</span></div>";
-        g.rows.slice(0, 8).forEach(function (i) {
-          var e = ZV[i];
-          vh += '<div class="fam-row" data-i="' + i + '" data-kind="zv">' +
-            '<span class="fz">' + esc(e[1]) + "</span>" +
-            '<span class="fv">' + esc(e[2]) + "</span>" +
-            "</div>";
+        g.rows.slice(0, 8).forEach(function (x) {
+          vh += viHeroRow(x[1], x[2], g.surface);
         });
         vh += "</div>";
       });
       var vtotal = r.variants.reduce(function (a, g) { return a + g.total; }, 0);
-      return { html: vh + "</article>", count: vtotal };
+      return { html: vh + "</article>", count: vtotal, top: r.variants[0].rows[0][1] };
     }
-    if (!r.exact.length && !r.starts.length && !r.contains.length) return null;
+    if (!r.hero.length && !r.starts.length && !r.contains.length) return null;
     var nom = NOM.get(r.key) || "";
     var html = '<article class="hero vihero">' +
       '<div class="hero-head">' +
         '<div class="hz vi-big">' + esc(q.trim()) + "</div>" +
         '<div class="hz-side">' + nomTag(nom, "nom-sm") + "</div>" +
       "</div>";
-    function rows(list, n) {
-      var out = "";
-      list.slice(0, n).forEach(function (i) {
-        var e = ZV[i];
-        out += '<div class="fam-row" data-i="' + i + '" data-kind="zv">' +
-          '<span class="fz">' + esc(e[1]) + "</span>" +
-          '<span class="fv">' + esc(e[2]) + "</span>" +
-          "</div>";
-      });
-      return out;
+    if (r.hero.length) {
+      var top = ZV[r.hero[0]];
+      html += '<div class="answer"><span class="hz-big">' + esc(top[1]) + "</span>" +
+        '<span class="hz-meta"><span class="py">' + esc(top[2]) + "</span>" +
+        '<span class="zy">' + esc(zhuyin(top[2])) + "</span>" +
+        (top[0] !== top[1] ? '<span class="trad">' + esc(top[0]) + "</span>" : "") +
+        (top[4] ? '<span class="hv">' + t("detail.hv") + " " + esc(top[4]) + "</span>" : "") +
+        "</span></div>";
     }
-    if (r.exact.length) {
-      html += '<div class="fam"><div class="fam-title">' + esc(t("vi.hero.label")) + "</div>" + rows(r.exact, 10) + "</div>";
+    if (r.hero.length > 1) {
+      html += '<div class="fam"><div class="fam-title">' + esc(t("vi.hero.label")) + "</div>";
+      r.hero.slice(1, 6).forEach(function (i) { html += viHeroRow(i, "", ""); });
+      html += "</div>";
     }
     if (r.starts.length) {
-      html += '<div class="fam"><div class="fam-title">' + esc(t("fam.starts", { w: r.key })) + "</div>" + rows(r.starts, 10) + "</div>";
+      html += '<div class="fam"><div class="fam-title">' + esc(t("fam.starts", { w: r.key })) + "</div>";
+      r.starts.forEach(function (x) { html += viHeroRow(x[0], x[1], r.key); });
+      html += "</div>";
     }
     if (r.contains.length) {
-      html += '<div class="fam"><div class="fam-title">' + esc(t("fam.contains", { w: r.key })) + "</div>" + rows(r.contains, 16) + "</div>";
+      html += '<div class="fam"><div class="fam-title">' + esc(t("fam.contains", { w: r.key })) + "</div>";
+      r.contains.forEach(function (x) { html += viHeroRow(x[0], x[1], r.key); });
+      html += "</div>";
     }
-    return { html: html + "</article>", count: r.exact.length + r.starts.length + r.contains.length };
+    return { html: html + "</article>", count: r.hero.length + r.starts.length + r.contains.length, top: r.hero[0] };
+  }
+
+  // 越南語詞的完整詞條（彈窗「查看完整詞條」用）：主卡 + 該詞條的雙語例句
+  function viDetail(q) {
+    var h = viHero(q);
+    if (!h) {
+      openSheet('<div class="det-hz vi-big">' + esc(String(q).trim()) + "</div>" +
+        '<div class="pop-none">' + t("pop.noZh") + "</div>");
+      return;
+    }
+    var ex = h.top != null ? ZV[h.top][6] : null;
+    openSheet(h.html + exampleBlock(ex));
   }
 
   function render(q) {
     q = (q || "").trim();
+    var histBox = document.getElementById("histDict");
     if (!q) {
       resultsEl.innerHTML = "";
       emptyEl.hidden = true;
+      if (histBox) histRender(histBox);
       return;
     }
+    if (histBox) histBox.hidden = true;
     var isCJK = /[\u3400-\u4dbf\u4e00-\u9fff]/.test(q);
     input.classList.toggle("zh", isCJK);
     input.classList.toggle("vi", !isCJK);
@@ -473,6 +516,70 @@
     countEl.textContent = n ? t("foot.count1", { n: n }) : t("foot.none");
   }
 
+  // ---------- 查詞記錄 ----------
+  var HIST_KEY = "hanviet.hist.dict";
+
+  function histLoad() {
+    try { return JSON.parse(localStorage.getItem(HIST_KEY) || "[]") || []; } catch (e) { return []; }
+  }
+  function histSave(list) {
+    try { localStorage.setItem(HIST_KEY, JSON.stringify(list.slice(0, 40))); } catch (e) {}
+  }
+  function histRecord(q) {
+    q = (q || "").trim();
+    if (!q || q.length > 60) return;
+    var list = histLoad().filter(function (x) { return x !== q; });
+    list.unshift(q);
+    histSave(list);
+  }
+  function histRender(box) {
+    var list = histLoad();
+    if (!list.length) { box.hidden = true; return; }
+    var h = '<div class="hist-head"><span>' + esc(t("hist.dict")) + "</span>" +
+      '<button type="button" class="linky" data-hclear>' + esc(t("hist.clear")) + "</button></div>" +
+      '<div class="hist-chips">';
+    list.slice(0, 24).forEach(function (w) {
+      h += '<button type="button" class="chip" data-hw="' + esc(w) + '">' + esc(w) + "</button>";
+    });
+    box.innerHTML = h + "</div>";
+    box.hidden = false;
+  }
+
+  var histBoxEl = document.getElementById("histDict");
+  if (histBoxEl) {
+    histBoxEl.addEventListener("click", function (ev) {
+      var c = ev.target.closest("[data-hclear]");
+      if (c) { histSave([]); histRender(histBoxEl); return; }
+      var chip = ev.target.closest("[data-hw]");
+      if (!chip) return;
+      input.value = chip.getAttribute("data-hw");
+      clearBtn.hidden = false;
+      render(input.value);
+    });
+  }
+
+  // 例句：中/越雙語都拆詞，每個詞可點擊查詞（彈窗能力由 translate.js 提供）
+  function tokHtml(text, lang) {
+    text = String(text || "");
+    var seg = lang === "zh" ? HV.segZh : HV.segVi;
+    if (!seg) return esc(text);
+    var toks = seg(text), html = [];
+    for (var i = 0; i < toks.length; i++) {
+      var tk = toks[i];
+      var lead = tk.lead ? esc(tk.lead) : "";
+      if (tk.w) html.push(lead + '<span class="tok" data-t="' + esc(tk.lookup || tk.t) + '">' + esc(tk.t) + "</span>");
+      else html.push(lead + '<span class="glue">' + esc(tk.t) + "</span>");
+    }
+    return html.join("");
+  }
+
+  function exampleBlock(ex) {
+    if (!ex || !ex[0]) return "";
+    return '<div class="det-ex"><div class="det-ex-h">' + t("detail.example") + "</div>" +
+      '<div class="det-ex-zh tokline zh exline">' + tokHtml(ex[0], "zh") + "</div>" +
+      '<div class="det-ex-vi tokline vi exline">' + tokHtml(ex[1], "vi") + "</div></div>";
+  }
+
   function detailZv(i) {
     var e = ZV[i];
     var fam = familyZh(firstSense(e), i);
@@ -480,9 +587,7 @@
     var html = '<div class="det-hz">' + esc(e[1]) + "</div>" +
       '<div class="det-vi">' + esc(firstSense(e)) + nomTag(e[5], "nom-md") + "</div>" +
       '<div class="det-senses">' + esc(e[3]) + "</div>" +
-      (e[6] ? '<div class="det-ex"><div class="det-ex-h">' + t("detail.example") + "</div>" +
-        '<div class="det-ex-zh">' + esc(e[6][0]) + "</div>" +
-        '<div class="det-ex-vi">' + esc(e[6][1]) + "</div></div>" : "") +
+      exampleBlock(e[6]) +
       '<dl class="defs">' +
       '<div class="def"><dt>' + t("detail.pinyin") + '</dt><dd>' + esc(e[2]) + "</dd></div>" +
       (e[0] !== e[1] ? '<div class="def"><dt>' + t("detail.trad") + '</dt><dd>' + esc(e[0]) + "</dd></div>" : "") +
@@ -502,11 +607,19 @@
     sheet.scrollTop = 0;
   }
 
-  var timer = null;
+  var timer = null, histTimer = null;
   input.addEventListener("input", function () {
     clearBtn.hidden = !input.value;
     clearTimeout(timer);
     timer = setTimeout(function () { render(input.value); }, 80);
+    clearTimeout(histTimer);
+    histTimer = setTimeout(function () { histRecord(input.value); }, 700);
+  });
+  input.addEventListener("keydown", function (ev) {
+    if (ev.key === "Enter") {
+      clearTimeout(histTimer);
+      histRecord(input.value);
+    }
   });
 
   clearBtn.addEventListener("click", function () {
@@ -533,7 +646,7 @@
   window.HV = {
     ZV: ZV, NOM: NOM, bySimp: bySimp, byTrad: byTrad,
     zhuyin: zhuyin, senses: senses, esc: esc,
-    detail: detailZv, openSheet: openSheet
+    detail: detailZv, viDetail: viDetail, openSheet: openSheet
   };
 
   // ---------- 界面語言 ----------
@@ -669,7 +782,7 @@
   }
 
   // ---------- 更新檢測 ----------
-  var APP_VERSION = "1.5.4";
+  var APP_VERSION = "1.5.5";
   var UPD_DISMISS = "hanviet.update.dismissed";
 
   function verNum(s) {

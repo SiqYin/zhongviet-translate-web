@@ -75,6 +75,7 @@
 
 <main id="main">
   <section id="dictView">
+    <section id="histDict" class="hist" hidden></section>
     <section id="results" aria-live="polite"></section>
     <section id="empty" class="empty" hidden>
       <p class="big" data-i18n="empty.title">沒有找到</p>
@@ -93,6 +94,8 @@
         <button class="primary" id="go" data-i18n="ai.go">翻譯</button>
       </div>
     </div>
+
+    <div id="histAi" class="hist" hidden></div>
 
     <div id="out" class="ai-out" hidden>
       <div class="out-head">
@@ -183,10 +186,11 @@
   <span>CVDICT · chunom.org</span>
 </footer>
 
-<script src="i18n.js?v=1"></script>
+<script src="i18n.js?v=4"></script>
 <script src="nom.js?v=3"></script>
 <script src="zhvi.js?v=3"></script>
-<script src="app.js?v=3"></script>
-<script src="translate.js?v=3"></script>
+<script src="vi2zh.js?v=1"></script>
+<script src="app.js?v=4"></script>
+<script src="translate.js?v=4"></script>
 </body>
 </html>

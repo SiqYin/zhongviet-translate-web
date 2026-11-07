@@ -190,6 +190,7 @@
     return out;
   }
   HV.segVi = segVi;
+  HV.segZh = segZh;
 
   // ================= 越南語 → 中文 反查索引 =================
   var viIdx = new Map(), viPos = 0, viBuilding = false, viBuilt = false;
@@ -312,8 +313,9 @@
   }
 
   function popVi(w) {
-    var hits = lookupVi(w);
-    var nom = (HV.NOM && HV.NOM.get(w.toLowerCase().trim())) || "";
+    var key = w.toLowerCase().trim().replace(/\s+/g, " ");
+    var hits = lookupVi(key);
+    var nom = (HV.NOM && HV.NOM.get(key)) || "";
     var h = '<div class="ptop"><span class="pvi-big">' + esc(w) + "</span>" +
       (nom ? '<span class="pnom">' + esc(nom) + "</span>" : "") + "</div>";
     if (!hits.length) {
@@ -322,24 +324,49 @@
     h += '<div class="plabel">' + t("vi.hero.label") + "</div>";
     hits.slice(0, 4).forEach(function (i) {
       var e = ZV[i];
+      var b = bestSenseRaw(i, key);
       h += '<div class="pitem"><span class="pw">' + esc(e[1]) + "</span>" +
-        '<span class="pp">' + esc(e[2]) + "</span></div>";
+        '<span class="pp">' + esc(e[2]) + "</span>" +
+        (b.raw && b.raw.toLowerCase() !== key ? '<span class="pv">' + esc(b.raw) + "</span>" : "") +
+        "</div>";
     });
-    h += '<div class="pfoot" data-open="' + hits[0] + '">' + t("detail.more") + "</div>";
+    // 「查看完整詞條」打開的是這個越南語詞自己的詞條，不是第一個中文候選
+    h += '<div class="pfoot" data-viopen="' + esc(w) + '">' + t("detail.more") + "</div>";
     return h;
+  }
+
+  // 找出詞條裡與 key 最貼合的那條越南語義項（原樣大小寫，供彈窗展示）
+  function bestSenseRaw(i, key) {
+    var ss = HV.senses(ZV[i]), best = 9, raw = "";
+    for (var j = 0; j < ss.length; j++) {
+      var sv = ss[j].toLowerCase().replace(/[（(][^）)]*[）)]/g, " ")
+        .replace(/[.,;:!?"'”’\]]+$/, "").replace(/\s+/g, " ").trim();
+      if (!sv) continue;
+      var sc = 9;
+      if (sv === key) sc = 0;
+      else if (sv.indexOf(key) === 0) sc = 1;
+      else if (sv.split(SEP).indexOf(key) > -1) sc = 3;
+      if (sc < best) { best = sc; raw = ss[j]; }
+      if (sc === 0) break;
+    }
+    return { sc: best, raw: raw };
   }
 
   function placePop(el) {
     if (window.matchMedia("(max-width:520px) and (hover:none)").matches) return;
     var r = el.getBoundingClientRect();
+    popAt(r.left + r.width / 2, r.bottom + 9, true);
+  }
+
+  // 以一個視口座標為錨點放彈窗（輸入框點詞用）
+  function popAt(cx, cy, preferBelow) {
     var pr = pop.getBoundingClientRect();
     var vw = window.innerWidth, vh = window.innerHeight;
-    var left = r.left + r.width / 2 - pr.width / 2;
-    left = Math.max(8, Math.min(left, vw - pr.width - 8));
-    var below = r.bottom + 9;
+    var left = Math.max(8, Math.min(cx - pr.width / 2, vw - pr.width - 8));
+    var below = cy + 9;
     var top;
-    if (below + pr.height <= vh - 10) top = below;              // 優先放詞下方
-    else top = Math.max(56, r.top - pr.height - 9);             // 下方不夠才放上方
+    if (preferBelow !== false && below + pr.height <= vh - 10) top = below;   // 優先放下方
+    else top = Math.max(56, cy - pr.height - 9);                              // 下方不夠才放上方
     pop.style.left = Math.round(left) + "px";
     pop.style.top = Math.round(top) + "px";
   }
@@ -475,7 +502,7 @@
       b.classList.toggle("on", b.getAttribute("data-view") === v);
     });
     hidePop();
-    if (v === "ai") { warmVi(); viPhrases(); }
+    if (v === "ai") { warmVi(); viPhrases(); aiHistSync(); }
     footer();
   }
 
@@ -552,9 +579,10 @@
     var t0 = Date.now();
     callApi(text).then(function (out) {
       var ms = Date.now() - t0;
-      renderOut(out, st.dir === "zh2vi" ? "vi" : "zh",
-        out.split("\n").length > 1 ? "Index-Translate · " + (ms / 1000).toFixed(1) + "s"
-          : "Index-Translate · " + (ms / 1000).toFixed(1) + "s");
+      var lang = st.dir === "zh2vi" ? "vi" : "zh";
+      var meta = "Index-Translate · " + (ms / 1000).toFixed(1) + "s";
+      renderOut(out, lang, meta);
+      aiHistPush({ src: text, dir: st.dir, script: st.script, out: out, lang: lang, meta: meta, ts: Date.now() });
     }).catch(function (e) {
       var m = String(e && e.message || e);
       if (e && e.name === "AbortError") m = t("ai.err.timeout");
@@ -573,6 +601,7 @@
     $("srcCount").textContent = n ? n : "0";
     $("clearSrc").hidden = !n;
     if (src.value.length > 3000) $("srcCount").textContent = t("ai.lenWarn", { n: n });
+    aiHistSync();
   });
   src.addEventListener("keydown", function (ev) {
     if ((ev.metaKey || ev.ctrlKey) && ev.key === "Enter") { ev.preventDefault(); run(); }
@@ -583,6 +612,7 @@
     $("clearSrc").hidden = true;
     clearOut();
     src.focus();
+    aiHistSync();
   });
   $("sample").addEventListener("click", function () {
     src.value = sampleText();
@@ -618,7 +648,10 @@
     var text = src.value.trim();
     if (!text) return;
     warmVi();
-    renderOut(offlineTranslate(text), st.dir === "zh2vi" ? "vi" : "zh", t("ai.out.offline"));
+    var lang = st.dir === "zh2vi" ? "vi" : "zh";
+    var outText = offlineTranslate(text);
+    renderOut(outText, lang, t("ai.out.offline"));
+    aiHistPush({ src: text, dir: st.dir, script: st.script, out: outText, lang: lang, meta: t("ai.out.offline"), ts: Date.now() });
     var tip = document.querySelector("#out .tip");
     if (tip) tip.textContent = t("ai.tip.offline");
     errBox.hidden = true;
@@ -652,7 +685,8 @@
   });
 
   // ================= 彈窗事件 =================
-  tokensEl.addEventListener("pointerover", function (ev) {
+  // 譯文詞、輸入框詞、詳情頁例句詞全部走同一套委託
+  document.addEventListener("pointerover", function (ev) {
     if (ev.pointerType && ev.pointerType !== "mouse") return;
     var el = ev.target.closest(".tok");
     if (!el) return;
@@ -660,19 +694,26 @@
     clearTimeout(hoverTimer);
     hoverTimer = setTimeout(function () { showPop(el); }, 110);
   });
-  tokensEl.addEventListener("pointerout", function (ev) {
+  document.addEventListener("pointerout", function (ev) {
     if (ev.pointerType && ev.pointerType !== "mouse") return;
     if (!ev.target.closest(".tok")) return;
     clearTimeout(hoverTimer);
     hideTimer = setTimeout(hidePop, 150);
   });
-  tokensEl.addEventListener("click", function (ev) {
+  document.addEventListener("click", function (ev) {
     var el = ev.target.closest(".tok");
     if (!el) return;
     if (curTok === el && !pop.hidden) { hidePop(); return; }
     showPop(el);
   });
   pop.addEventListener("click", function (ev) {
+    var v = ev.target.closest("[data-viopen]");
+    if (v) {
+      var w = v.getAttribute("data-viopen");
+      hidePop();
+      if (HV.viDetail) HV.viDetail(w);
+      return;
+    }
     var f = ev.target.closest("[data-open]");
     if (!f) return;
     var i = +f.getAttribute("data-open");
@@ -681,7 +722,7 @@
   });
   document.addEventListener("click", function (ev) {
     if (pop.hidden) return;
-    if (ev.target.closest("#pop") || ev.target.closest(".tok")) return;
+    if (ev.target.closest("#pop") || ev.target.closest(".tok") || ev.target === src) return;
     hidePop();
   });
   window.addEventListener("scroll", hidePop, { passive: true });
@@ -690,10 +731,106 @@
     if (ev.key === "Escape") hidePop();
   });
 
+  // ================= 輸入框拆詞 =================
+  // 點輸入框裡的詞：中文詞彈「詞 + 越南語翻譯」，越南語詞彈「詞 + 中文對應」
+  src.addEventListener("click", function (ev) {
+    var text = src.value;
+    if (!text || !text.trim()) { hidePop(); return; }
+    if (src.selectionStart == null || src.selectionEnd !== src.selectionStart) return;
+    var pos = src.selectionStart;
+    var seg = st.dir === "zh2vi" ? segZh(text) : segVi(text);
+    var off = 0, found = null;
+    for (var i = 0; i < seg.length; i++) {
+      var tk = seg[i];
+      off += tk.lead ? tk.lead.length : 0;
+      var len = tk.t.length;
+      if (tk.w && pos >= off && pos <= off + len) { found = tk; break; }
+      off += len;
+    }
+    if (!found) { hidePop(); return; }
+    var w = found.lookup || found.t;
+    pop.innerHTML = st.dir === "zh2vi" ? popZh(w) : popVi(w);
+    pop.hidden = false;
+    if (curTok) { curTok.classList.remove("on"); curTok = null; }
+    popAt(ev.clientX || 80, ev.clientY || 120, true);
+    ev.stopPropagation();     // 別讓「點外部就收起」的委託立刻把它關掉
+  });
+
+  // ================= 翻譯記錄 =================
+  var AIH_KEY = "hanviet.hist.ai";
+  var histAiBox = $("histAi");
+
+  function aiHistLoad() {
+    try { return JSON.parse(localStorage.getItem(AIH_KEY) || "[]") || []; } catch (e) { return []; }
+  }
+  function aiHistSave(list) {
+    try { localStorage.setItem(AIH_KEY, JSON.stringify(list.slice(0, 30))); } catch (e) {}
+  }
+  function aiHistPush(entry) {
+    var list = aiHistLoad().filter(function (x) { return !(x.src === entry.src && x.dir === entry.dir); });
+    list.unshift(entry);
+    aiHistSave(list);
+    aiHistSync();
+  }
+  function aiHistSync() {
+    if (!histAiBox) return;
+    var empty = !src.value.trim();
+    histAiBox.hidden = !empty || !aiHistLoad().length;
+    if (!histAiBox.hidden) aiHistRender();
+  }
+  function aiHistRender() {
+    var list = aiHistLoad();
+    var h = '<div class="hist-head"><span>' + esc(t("hist.ai")) + "</span>" +
+      '<button type="button" class="linky" data-hclear>' + esc(t("hist.clear")) + "</button></div>";
+    list.slice(0, 20).forEach(function (x, idx) {
+      var dirL = t("ai.dir." + (x.dir === "vi2zh" ? "vi2zh" : "zh2vi"));
+      var time = "";
+      try {
+        var d = new Date(x.ts || 0);
+        time = ("0" + d.getHours()).slice(-2) + ":" + ("0" + d.getMinutes()).slice(-2);
+      } catch (e) {}
+      h += '<button type="button" class="hist-item" data-hi="' + idx + '">' +
+        '<span class="hi-src">' + esc(x.src.length > 90 ? x.src.slice(0, 90) + "…" : x.src) + "</span>" +
+        '<span class="hi-meta">' + esc(dirL) + (time ? " · " + time : "") + "</span></button>";
+    });
+    histAiBox.innerHTML = h;
+  }
+  function aiHistRestore(idx) {
+    var x = aiHistLoad()[idx];
+    if (!x) return;
+    st.dir = x.dir === "vi2zh" ? "vi2zh" : "zh2vi";
+    st.script = x.script === "hant" ? "hant" : "hans";
+    Array.prototype.forEach.call(dirSeg.querySelectorAll("button"), function (b) {
+      b.classList.toggle("on", b.getAttribute("data-dir") === st.dir);
+    });
+    Array.prototype.forEach.call(scriptSeg.querySelectorAll("button"), function (b) {
+      b.classList.toggle("on", b.getAttribute("data-script") === st.script);
+    });
+    saveOpts();
+    refreshDir();
+    src.value = x.src;
+    $("srcCount").textContent = x.src.length;
+    $("clearSrc").hidden = false;
+    errBox.hidden = true;
+    renderOut(x.out, x.lang || (x.dir === "zh2vi" ? "vi" : "zh"), x.meta || "");
+    src.focus();
+    aiHistSync();
+  }
+  if (histAiBox) {
+    histAiBox.addEventListener("click", function (ev) {
+      var c = ev.target.closest("[data-hclear]");
+      if (c) { aiHistSave([]); aiHistSync(); return; }
+      var item = ev.target.closest("[data-hi]");
+      if (!item) return;
+      aiHistRestore(+item.getAttribute("data-hi"));
+    });
+  }
+
   // ================= 初始化 =================
   document.addEventListener("langchange", function () {
     refreshDir();
     footer();
+    aiHistSync();
   });
 
   var qs = new URLSearchParams(location.search);

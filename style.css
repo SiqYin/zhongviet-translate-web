@@ -473,3 +473,26 @@ html[data-theme="dark"] .card:hover{box-shadow:0 6px 18px rgba(0,0,0,.4)}
 @media (prefers-reduced-motion: reduce){
   *,*::before,*::after{animation-duration:.001s!important;animation-iteration-count:1!important;transition-duration:.001s!important}
 }
+
+/* ---------- v1.5.5 越南語詞條重做 / 拆詞例句 / 查詢與翻譯記錄 ---------- */
+.hz-big{font-size:30px;font-weight:600;color:var(--zh);font-family:var(--kai);letter-spacing:.01em;overflow-wrap:anywhere}
+.answer .hz-meta{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;padding-top:4px}
+.fam-row .fpy{font-size:11.5px;color:var(--zh-3);font-family:var(--kai);flex:none}
+.fam-row.viz .fv{color:var(--vi);font-size:13.5px}
+.exline{cursor:default}
+.exline .tok{cursor:pointer}
+.exline .tokline.zh .tok:hover,.exline .tok.on{background:var(--zh-bg);box-shadow:0 0 0 2px var(--zh-bg)}
+.exline .tokline.vi .tok:hover{background:var(--vi-bg);box-shadow:0 0 0 2px var(--vi-bg)}
+
+.hist{margin:2px 0 14px}
+.hist-head{display:flex;align-items:baseline;gap:10px;font-size:11px;color:var(--muted);letter-spacing:.1em;margin-bottom:8px}
+.hist-head .linky{letter-spacing:.02em}
+.hist-chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:999px;
+  padding:5px 12px;font-size:13px;font-family:var(--kai);cursor:pointer;transition:background .2s,border-color .2s}
+.chip:hover{background:var(--card-2);border-color:var(--zh-3)}
+.hist-item{display:block;width:100%;text-align:left;border:1px solid var(--line);background:var(--card);
+  border-radius:12px;padding:9px 12px;margin-bottom:8px;cursor:pointer;transition:background .2s}
+.hist-item:hover{background:var(--card-2)}
+.hi-src{display:block;font-size:13.5px;color:var(--ink);font-family:var(--kai);overflow-wrap:anywhere}
+.hi-meta{display:block;margin-top:3px;font-size:11px;color:var(--muted);letter-spacing:.03em}

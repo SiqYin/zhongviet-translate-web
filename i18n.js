@@ -84,6 +84,9 @@
       "pop.miss": "词库未收录「{w}」。",
       "pop.noZh": "找不到这个词的中文对应。",
       "ai.lenWarn": "{n} 字（偏长）",
+      "hist.dict": "查词记录",
+      "hist.ai": "翻译记录",
+      "hist.clear": "清空",
 "lang.label": "界面语言"
     },
     hant: {
@@ -167,6 +170,9 @@
       "pop.miss": "詞庫未收錄「{w}」。",
       "pop.noZh": "找不到這個詞的中文對應。",
       "ai.lenWarn": "{n} 字（偏長）",
+      "hist.dict": "查詞記錄",
+      "hist.ai": "翻譯記錄",
+      "hist.clear": "清空",
 "lang.label": "介面語言"
     },
     vi: {
@@ -250,6 +256,9 @@
       "pop.miss": "Từ điển chưa có「{w}」.",
       "pop.noZh": "Không tìm thấy từ Hán tương ứng.",
       "ai.lenWarn": "{n} ký tự（hơi dài）",
+      "hist.dict": "Lịch sử tra từ",
+      "hist.ai": "Lịch sử dịch",
+      "hist.clear": "Xóa hết",
 "lang.label": "Ngôn ngữ giao diện"
     },
     en: {
@@ -333,6 +342,9 @@
       "pop.miss": "“{w}” is not in the dictionary.",
       "pop.noZh": "No Chinese equivalent found.",
       "ai.lenWarn": "{n} chars (a bit long)",
+      "hist.dict": "Search history",
+      "hist.ai": "Translation history",
+      "hist.clear": "Clear all",
 "lang.label": "Interface language"
     }
   };
