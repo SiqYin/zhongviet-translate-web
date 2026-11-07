@@ -284,7 +284,8 @@
       }
       if (bestJ > -1) exactC.push([i, bestJ]);
     }
-    // 主對應：VI2ZH 精排在前（回校驗該條確有此義項），其餘按啟發式
+    // 主對應：VI2ZH 精排在前（回校驗該條確有此義項）；
+    // 有精排結果時不再回填其餘候選（AI 已把不對的去掉），只補多字詞
     var order = (window.VI2ZH && window.VI2ZH[key]) || [];
     var exactSet = {};
     exactC.forEach(function (x) { exactSet[x[0]] = 1; });
@@ -293,14 +294,12 @@
       if (i2 == null || heroSeen[i2] || !exactSet[i2]) return;
       heroSeen[i2] = 1; hero.push(i2);
     });
-    exactC.sort(function (a, b) { return zhCandScore(a[0], a[1]) - zhCandScore(b[0], b[1]); });
-    exactC.sort(function (a, b) {           // 兜底時單字放多字詞後面（AI 精排過的不受影響）
-      var sa = zhLen(ZV[a[0]][1]) === 1 ? 1 : 0, sb = zhLen(ZV[b[0]][1]) === 1 ? 1 : 0;
-      return sa - sb;
-    });
-    exactC.forEach(function (x) {
-      if (!heroSeen[x[0]]) { heroSeen[x[0]] = 1; hero.push(x[0]); }
-    });
+    var rest = exactC.filter(function (x) { return !heroSeen[x[0]]; });
+    rest.sort(function (a, b) { return zhCandScore(a[0], a[1]) - zhCandScore(b[0], b[1]); });
+    var multis = [], singles = [];
+    rest.forEach(function (x) { (zhLen(ZV[x[0]][1]) >= 2 ? multis : singles).push(x); });
+    if (hero.length < 6) multis.forEach(function (x) { if (hero.length < 6 && !heroSeen[x[0]]) { heroSeen[x[0]] = 1; hero.push(x[0]); } });
+    if (!hero.length) singles.forEach(function (x) { if (hero.length < 6 && !heroSeen[x[0]]) { heroSeen[x[0]] = 1; hero.push(x[0]); } });
     hero = hero.slice(0, 6);
     starts.sort(function (a, b) { return viRowScore(a[0], a[1]) - viRowScore(b[0], b[1]); });
     contains.sort(function (a, b) { return viRowScore(a[0], a[1]) - viRowScore(b[0], b[1]); });
@@ -782,7 +781,7 @@
   }
 
   // ---------- 更新檢測 ----------
-  var APP_VERSION = "1.5.5";
+  var APP_VERSION = "1.5.6";
   var UPD_DISMISS = "hanviet.update.dismissed";
 
   function verNum(s) {
