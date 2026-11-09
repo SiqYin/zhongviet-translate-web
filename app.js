@@ -291,7 +291,7 @@
     exactC.forEach(function (x) { exactSet[x[0]] = 1; });
     order.forEach(function (zh) {
       var i2 = bySimp.get(zh);
-      if (i2 == null || heroSeen[i2] || !exactSet[i2]) return;
+      if (i2 == null || heroSeen[i2]) return;
       heroSeen[i2] = 1; hero.push(i2);
     });
     var rest = exactC.filter(function (x) { return !heroSeen[x[0]]; });
@@ -305,6 +305,7 @@
     contains.sort(function (a, b) { return viRowScore(a[0], a[1]) - viRowScore(b[0], b[1]); });
     return {
       key: key,
+      gloss: order,
       hero: hero,
       starts: starts.slice(0, 12),
       contains: contains.filter(function (x) { return !startSeen[x[0]]; }).slice(0, 12)
@@ -423,6 +424,18 @@
       "</div>";
   }
 
+  // 釋義行：能對上詞庫詞頭就帶拼音並可點開詞條，否則只顯示釋義
+  function viGlossRow(zh) {
+    var i = bySimp.get(zh);
+    if (i == null) {
+      return '<div class="fam-row viz"><span class="fz">' + esc(zh) + "</span></div>";
+    }
+    var e = ZV[i];
+    return '<div class="fam-row viz" data-i="' + i + '" data-kind="zv">' +
+      '<span class="fz">' + esc(e[1]) + "</span>" +
+      '<span class="fpy">' + esc(e[2]) + "</span></div>";
+  }
+
   function viHero(q) {
     var r = searchVi(q);
     if (r.variants && r.variants.length) {
@@ -440,14 +453,39 @@
       var vtotal = r.variants.reduce(function (a, g) { return a + g.total; }, 0);
       return { html: vh + "</article>", count: vtotal, top: r.variants[0].rows[0][1] };
     }
-    if (!r.hero.length && !r.starts.length && !r.contains.length) return null;
+    if (!r.hero.length && !r.starts.length && !r.contains.length && !(r.gloss && r.gloss.length)) return null;
     var nom = NOM.get(r.key) || "";
     var html = '<article class="hero vihero">' +
       '<div class="hero-head">' +
         '<div class="hz vi-big">' + esc(q.trim()) + "</div>" +
         '<div class="hz-side">' + nomTag(nom, "nom-sm") + "</div>" +
       "</div>";
-    if (r.hero.length) {
+    var gloss = r.gloss || [];
+    var topIdx = null;
+    if (gloss.length) {
+      var gi = bySimp.get(gloss[0]);
+      if (gi != null) topIdx = gi;
+    }
+    if (topIdx == null && r.hero.length) topIdx = r.hero[0];
+
+    if (gloss.length) {
+      // 主答案直接用該越南語詞的現代漢語釋義（AI 直譯，不再受限於舊詞庫候選）
+      var meta = "";
+      if (topIdx != null) {
+        var te = ZV[topIdx];
+        meta = '<span class="hz-meta"><span class="py">' + esc(te[2]) + "</span>" +
+          '<span class="zy">' + esc(zhuyin(te[2])) + "</span>" +
+          (te[0] !== te[1] ? '<span class="trad">' + esc(te[0]) + "</span>" : "") +
+          (te[4] ? '<span class="hv">' + t("detail.hv") + " " + esc(te[4]) + "</span>" : "") +
+          "</span>";
+      }
+      html += '<div class="answer"><span class="hz-big">' + esc(gloss[0]) + "</span>" + meta + "</div>";
+      if (gloss.length > 1) {
+        html += '<div class="fam"><div class="fam-title">' + esc(t("vi.hero.label")) + "</div>";
+        gloss.slice(1, 6).forEach(function (zh) { html += viGlossRow(zh); });
+        html += "</div>";
+      }
+    } else if (r.hero.length) {
       var top = ZV[r.hero[0]];
       html += '<div class="answer"><span class="hz-big">' + esc(top[1]) + "</span>" +
         '<span class="hz-meta"><span class="py">' + esc(top[2]) + "</span>" +
@@ -455,11 +493,11 @@
         (top[0] !== top[1] ? '<span class="trad">' + esc(top[0]) + "</span>" : "") +
         (top[4] ? '<span class="hv">' + t("detail.hv") + " " + esc(top[4]) + "</span>" : "") +
         "</span></div>";
-    }
-    if (r.hero.length > 1) {
-      html += '<div class="fam"><div class="fam-title">' + esc(t("vi.hero.label")) + "</div>";
-      r.hero.slice(1, 6).forEach(function (i) { html += viHeroRow(i, "", ""); });
-      html += "</div>";
+      if (r.hero.length > 1) {
+        html += '<div class="fam"><div class="fam-title">' + esc(t("vi.hero.label")) + "</div>";
+        r.hero.slice(1, 6).forEach(function (i) { html += viHeroRow(i, "", ""); });
+        html += "</div>";
+      }
     }
     if (r.starts.length) {
       html += '<div class="fam"><div class="fam-title">' + esc(t("fam.starts", { w: r.key })) + "</div>";
@@ -471,7 +509,9 @@
       r.contains.forEach(function (x) { html += viHeroRow(x[0], x[1], r.key); });
       html += "</div>";
     }
-    return { html: html + "</article>", count: r.hero.length + r.starts.length + r.contains.length, top: r.hero[0] };
+    return { html: html + "</article>",
+      count: (r.gloss ? r.gloss.length : 0) + r.starts.length + r.contains.length,
+      top: topIdx };
   }
 
   // 越南語詞的完整詞條（彈窗「查看完整詞條」用）：主卡 + 該詞條的雙語例句
